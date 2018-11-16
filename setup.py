@@ -26,8 +26,9 @@ setup(
     version='0.0.0',
     description='Python implementation of block decomposition method for approximating algorithmic complexity.',
     long_description=readme + '\n\n' + doclink + '\n\n' + history,
-    author='Szymon Talaga',
-    author_email='stalaga@protonmail.com',
+    author='AlgoDyn Development Team',
+    maintainer='Szymon Talaga',
+    maintainer_email='stalaga@protonmail.com',
     url='https://github.com/sztal/pybdm',
     packages=[
         *find_packages()
