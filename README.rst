@@ -77,6 +77,18 @@ seems to be a good choice for this. It is quite complicated in advanced usecases
 but standard usage is extremely simple. It also make benchmarking and profiling
 code very easy.
 
+Documentation
+-------------
+
+I recommend to use the so-called
+`Numpy style <https://numpydoc.readthedocs.io/en/latest/format.html>`__
+documentation. It makes it very easy to read docstrings in the source code and
+is not to hard to write (check the skeleton code of the ``BDM`` class).
+It can also utilize all the power of the
+`reStructuredText <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`__
+markup.
+
+
 Package structure
 -----------------
 
@@ -90,6 +102,17 @@ At this point it is important to mention only one special directory
     of a great use during the development
     (i.e. for informing and validating the new implementation).
 
+
+Useful VS Code extensions
+-------------------------
+
+Here is a short list of extensions for the VS Code IDE, that are often useful:
+
+* `Python extension <https://marketplace.visualstudio.com/items?itemName=ms-python.python>`__
+* `Anaconda extension pack <https://marketplace.visualstudio.com/items?itemName=ms-python.anaconda-extension-pack>`__
+  (for those who use *Anaconda* python distribution)
+* `RST preview <https://marketplace.visualstudio.com/items?itemName=tht13.rst-vscode>`__
+  (useful for previewing *reStructuredText* files, such as this README)
 
 Features
 --------

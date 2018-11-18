@@ -37,26 +37,31 @@ class BDM:
     combine : callable or None
         Combine function. Use the default method if ``None``.
     """
-
     def __init__(self, dtype, boundary=leftover,
-                 partition=None, apply=None, combine=None):
+                 split=None, apply=None, combine=None):
         """Initialization method."""
         self.dtype = dtype
         self.boundary = boundary
-        self._partition = partition
+        self._split = split
         self._apply = apply
         self._combine = combine
 
     def split(self, x):
         """Default partition method."""
+        if self._split:
+            return self._split(x)
         pass
 
     def apply(self, x):
         """Default apply method."""
+        if self._apply:
+            return self._apply(x)
         pass
 
     def combine(self, x):
         """Default combine method."""
+        if self._combine:
+            return self._combine(x)
         pass
 
     def complexity(self, x):
