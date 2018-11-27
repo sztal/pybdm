@@ -4,7 +4,7 @@ import os
 import sys
 
 try:
-    from setuptools import setup, find_packages
+    from setuptools import setup
 except ImportError:
     from distutils.core import setup
 
@@ -30,10 +30,9 @@ setup(
     maintainer='Szymon Talaga',
     maintainer_email='stalaga@protonmail.com',
     url='https://github.com/sztal/pybdm',
-    packages=[
-        *find_packages()
-        #'bdm',
-    ],
+    packages=['bdm'],
+    package_data={'bdm': ['resources/*.pickle']},
+    include_package_data=True,
     setup_requires=['pytest-runner'],
     tests_require=[
         'pytest',
@@ -44,9 +43,8 @@ setup(
         'coverage'
     ],
     test_suite='tests',
-    package_dir={'bdm': 'bdm'},
-    include_package_data=True,
     install_requires=[
+        'numpy>=1.15.4'
     ],
     license='MIT',
     zip_safe=False,

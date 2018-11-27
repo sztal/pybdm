@@ -1,5 +1,6 @@
 """*PyTest* configuration and general purpose fixtures."""
 import pytest
+from bdm import BDM
 
 
 def pytest_addoption(parser):
@@ -34,3 +35,14 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if 'slow' in item.keywords:
                 item.add_marker(skip_slow)
+
+
+# Fixtures --------------------------------------------------------------------
+
+@pytest.fixture(scope='session')
+def bdm_d1():
+    return BDM(ndim=1)
+
+@pytest.fixture(scope='session')
+def bdm_d2():
+    return BDM(ndim=2)
