@@ -13,6 +13,6 @@ Datasets
 """
 
 CTM_DATASETS = {
-    'CTM-B2-D12': 'ctm-b2-d12.pickle',
-    'CTM-B2-D4x4': 'ctm-b2-d4x4.pickle'
+    'CTM-B2-D12': 'ctm-b2-d12.pkl',
+    'CTM-B2-D4x4': 'ctm-b2-d4x4.pkl'
 }

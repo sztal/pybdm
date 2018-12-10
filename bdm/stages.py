@@ -57,6 +57,11 @@ def partition(x, shape, shift=0, reduced_idx=None):
         If parts' `shape` is not equal in each dimension.
         If parts' `shape` and dataset's shape have different numbers of axes.
 
+    Acknowledgments
+    ---------------
+    Special thanks go to Paweł Weroński for the help with the design of
+    the non-recursive *partition* algorithm.
+
     Examples
     --------
     >>> [ x for x in partition(np.ones((3, 3), dtype=int), shape=(2, 2)) ]
