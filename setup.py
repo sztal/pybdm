@@ -32,8 +32,10 @@ setup(
     url='https://github.com/sztal/pybdm',
     packages=[
         *find_packages()
-        #'bdm',
+        #'bdm'
     ],
+    package_data={'bdm': ['resources/*.pickle']},
+    include_package_data=True,
     setup_requires=['pytest-runner'],
     tests_require=[
         'pytest',
@@ -44,9 +46,8 @@ setup(
         'coverage'
     ],
     test_suite='tests',
-    package_dir={'bdm': 'bdm'},
-    include_package_data=True,
     install_requires=[
+        'numpy>=1.15.4'
     ],
     license='MIT',
     zip_safe=False,
