@@ -11,10 +11,10 @@ Subpackages
 Submodules
 ----------
 
-bdm.bdm module
---------------
+bdm.base module
+---------------
 
-.. automodule:: bdm.bdm
+.. automodule:: bdm.base
     :members:
     :undoc-members:
     :show-inheritance:
@@ -23,14 +23,6 @@ bdm.encoding module
 -------------------
 
 .. automodule:: bdm.encoding
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-bdm.stages module
------------------
-
-.. automodule:: bdm.stages
     :members:
     :undoc-members:
     :show-inheritance:

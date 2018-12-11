@@ -6,18 +6,42 @@ import numpy as np
 from .ctmdata import CTM_DATASETS as _ctm_datasets, __name__ as _ctmdata_path
 
 
-def list_ctm_datasets():
-    """Get a list of available precomputed CTM datasets.
-
-    Examples
-    --------
-    >>> list_ctm_datasets()
-    ['CTM-B2-D12', 'CTM-B2-D4x4']
-    """
-    return [ x for x in sorted(_ctm_datasets.keys()) ]
-
 def get_reduced_shape(x, shape, shift=0, length_only=True):
     """Get shape of a reduced dataset.
+
+    The notion of reduced dataset shape is central for the core partition algorithm.
+    A reduced representation of dataset shape is a tuple of integers
+    indicating how many units along each dimension would a dataset have
+    if it was sliced into pieces of a given shape and each slice would
+    be considered an entry in a ``N``-dimensional array
+    (where ``N`` is the number of axes in the original dataset).
+
+    More on reduced shapes
+    ----------------------
+
+    Reduced representation makes it ease to achieve several important goals:
+
+    #. Compute the total number of slices. This is needed to represent
+       ``N`` nested for-loops going over all axes of a dataset as a single
+       flat for-loop. Loop flattenning allows the partition algorithm
+       to operate over arrays with arbitrary numbers of axes.
+       It also makes it easily paralelizable.
+    #. Position in the reduced representation can be easily
+       back-transformed to positions in the original dataset.
+       This makes it possible to loop over a reduced representation
+       while slicing out pieces of the original dataset.
+
+    Here is an example of a reduced shape representation::
+
+        # Consider a 2D array and a slice shape (2, 2)
+        x x x x
+        x x x x
+        x x x x
+        x x x x
+        # Then the array is reduced to:
+        x x
+        x x
+        # So the reduced shape is (2, 2) instead of (4, 4)
 
     Parameters
     ----------
@@ -71,6 +95,10 @@ def get_reduced_shape(x, shape, shift=0, length_only=True):
 def get_reduced_idx(i, shape):
     """Get index of a part in a reduced representation from a part's number.
 
+    See Also
+    --------
+    :py:func:`bdm.utils.get_reduced_shape`
+
     Parameters
     ----------
     i : int
@@ -90,6 +118,10 @@ def get_reduced_idx(i, shape):
     >>> get_reduced_idx(2, (1, 4))
     (0, 2)
     """
+    if i >= int(np.multiply.reduce(shape)):
+        raise IndexError("'i' is beyond the provided shape")
+    elif i < 0:
+        raise IndexError("'i' has to be non-zero")
     K = len(shape)
     r_idx = tuple(
         (i % int(np.multiply.reduce(shape[k:K]))) //
@@ -97,6 +129,16 @@ def get_reduced_idx(i, shape):
         for k in range(K)
     )
     return r_idx
+
+def list_ctm_datasets():
+    """Get a list of available precomputed CTM datasets.
+
+    Examples
+    --------
+    >>> list_ctm_datasets()
+    ['CTM-B2-D12', 'CTM-B2-D4x4']
+    """
+    return [ x for x in sorted(_ctm_datasets.keys()) ]
 
 @lru_cache(maxsize=2**int(np.ceil(np.log2(len(_ctm_datasets)))))
 def get_ctm_dataset(name):
