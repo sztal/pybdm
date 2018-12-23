@@ -1,16 +1,14 @@
 from bdm.base import BDMIgnore as BDM
+from bdm.utils import get_ctm_dataset, get_reduced_idx, get_reduced_shape
 import numpy as np
+from collections import Counter
 
-bdm = BDM(2)
-d1 = np.ones((10,10),dtype=int)
-d2 = np.random.randint(2,size=(10,10))
+bdm1 = BDM(1)
+bdm2 = BDM(2)
+ctm = get_ctm_dataset('CTM-B2-D12')
+c1 = Counter([('111111111111', 1.95207842085224e-08)])
+c2 = Counter([('000000000000', 1.95207842085224e-08)])
+c3 = Counter([('101010101010', 7.49862566298854e-09)])
 
-c1 = bdm.count_and_lookup(d1)
-bdm1 = bdm.compute_bdm(c1)
-c2 = bdm.count_and_lookup(d2)
-bdm2 = bdm.compute_bdm(c2)
-
-print(bdm1,bdm2)
-
-
+x=np.random.randint(0,2,48)
 

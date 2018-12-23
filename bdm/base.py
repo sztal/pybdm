@@ -325,6 +325,67 @@ class BDMBase:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
         return cmx
 
+    def compute_entropy(self, *counters ,base=2):
+        """Compute block entropy from counter.
+
+        Parameters
+        ----------
+        *counters :
+            Counter objects grouping object keys and occurences.
+
+        base : integer
+            Base in which entropy is measured. By default base 2 is used.
+
+        Returns
+        -------
+        float
+            Block entropy.
+
+        Examples
+        --------
+        >>> from collections import Counter
+        >>> bdm = BDMBase(ndim=1, shift=0)
+        >>> c1 = Counter([('111111111111', 1.95207842085224e-08)])
+        >>> c2 = Counter([('000000000000', 1.95207842085224e-08)])
+        >>> bdm.compute_entropy(c1, c2)
+            1.0
+        """
+        counter = reduce(lambda x, y: x+y, counters)
+        ncounts = sum(counter.values())
+        ent = 0
+        for n in counter.values():
+            p = n/ncounts
+            ent -= p*np.log2(p)/np.log(int(base))
+        return ent
+
+    def entropy(self, x, base=2):
+        """Block entropy of a dataset.
+
+        Parameters
+        ----------
+        x : array_like
+            Dataset representation as a :py:class:`numpy.ndarray`.
+            Number of axes must agree with the `ndim` attribute.
+
+        base : integer
+            Base in which entropy is measured. By default base 2 is used.
+
+        Returns
+        -------
+        float
+            Block entropy.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> bdm = BDMBase(ndim=2, shift=0)
+        >>> bdm.entropy(np.ones((12, 12), dtype=int))
+        0.0
+        """
+        counter = self.count_and_lookup(x)
+        return self.compute_entropy(counter, int(base)
+
+
 
 class BDMIgnore(BDMBase):
     """Block decomposition method with ignore boundary condition.
