@@ -6,6 +6,5 @@ from collections import Counter
 bdm1 = BDM(1)
 bdm2 = BDM(2)
 ctm1 = get_ctm_dataset('CTM-B2-D12B')
-ctm2 = get_ctm_dataset('CTM-B2-D4x4')
-
-print(len(ctm1))
+print(ctm1["000000000000"])
+print(bdm1.bdm(np.ones(24,dtype=int)))
