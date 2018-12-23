@@ -5,10 +5,7 @@ from collections import Counter
 
 bdm1 = BDM(1)
 bdm2 = BDM(2)
-ctm = get_ctm_dataset('CTM-B2-D12')
-c1 = Counter([('111111111111', 1.95207842085224e-08)])
-c2 = Counter([('000000000000', 1.95207842085224e-08)])
-c3 = Counter([('101010101010', 7.49862566298854e-09)])
+ctm1 = get_ctm_dataset('CTM-B2-D12B')
+ctm2 = get_ctm_dataset('CTM-B2-D4x4')
 
-x=np.random.randint(0,2,48)
-
+print(len(ctm1))

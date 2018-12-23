@@ -87,7 +87,7 @@ class BDMBase:
         2: (4, 4)
     }
     _ndim_to_ctm = {
-        1: 'CTM-B2-D12',
+        1: 'CTM-B2-D12B',
         2: 'CTM-B2-D4x4'
     }
     boundary_condition = 'none'
@@ -383,8 +383,7 @@ class BDMBase:
         0.0
         """
         counter = self.count_and_lookup(x)
-        return self.compute_entropy(counter, int(base)
-
+        return self.compute_entropy(counter, int(base))
 
 
 class BDMIgnore(BDMBase):
