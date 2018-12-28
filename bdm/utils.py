@@ -136,7 +136,7 @@ def list_ctm_datasets():
     Examples
     --------
     >>> list_ctm_datasets()
-    ['CTM-B2-D12', 'CTM-B2-D4x4']
+    ['CTM-B2-D12', 'CTM-B2-D12B', 'CTM-B2-D4x4']
     """
     return [ x for x in sorted(_ctm_datasets.keys()) ]
 

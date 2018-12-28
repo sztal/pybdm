@@ -199,10 +199,7 @@ class BDMBase:
         for part in parts:
             key = string_from_array(part)
             try:
-                if self._sep in key:
-                    cmx = self._ctm[key]
-                else:
-                    cmx = self._ctm.get(key, self._ctm[key.lstrip('0')])
+                cmx = self._ctm[key]
             except KeyError:
                 raise KeyError(f"CTM dataset does not contain object '{key}'")
             yield key, cmx
@@ -325,7 +322,7 @@ class BDMBase:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
         return cmx
 
-    def compute_entropy(self, *counters ,base=2):
+    def compute_entropy(self, *counters):
         """Compute block entropy from counter.
 
         Parameters
@@ -333,13 +330,10 @@ class BDMBase:
         *counters :
             Counter objects grouping object keys and occurences.
 
-        base : integer
-            Base in which entropy is measured. By default base 2 is used.
-
         Returns
         -------
         float
-            Block entropy.
+            Block entropy in base 2.
 
         Examples
         --------
@@ -355,10 +349,10 @@ class BDMBase:
         ent = 0
         for n in counter.values():
             p = n/ncounts
-            ent -= p*np.log2(p)/np.log(int(base))
+            ent -= p*np.log2(p)
         return ent
 
-    def entropy(self, x, base=2):
+    def entropy(self, x):
         """Block entropy of a dataset.
 
         Parameters
@@ -367,13 +361,10 @@ class BDMBase:
             Dataset representation as a :py:class:`numpy.ndarray`.
             Number of axes must agree with the `ndim` attribute.
 
-        base : integer
-            Base in which entropy is measured. By default base 2 is used.
-
         Returns
         -------
         float
-            Block entropy.
+            Block entropy in base 2.
 
         Examples
         --------
@@ -383,7 +374,7 @@ class BDMBase:
         0.0
         """
         counter = self.count_and_lookup(x)
-        return self.compute_entropy(counter, int(base))
+        return self.compute_entropy(counter)
 
 
 class BDMIgnore(BDMBase):
