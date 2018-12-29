@@ -11,4 +11,4 @@ Core Team
 Contributors
 ------------
 
-None yet. Why not be the first?
+* Paweł Weroński <pawel.m.weronski@gmail.com>
