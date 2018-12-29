@@ -4,7 +4,7 @@ from collections import Counter
 import pytest
 from pytest import approx
 import numpy as np
-from bdm.base import BDMBase, BDMIgnore, BDMShrink
+from bdm.base import BDMBase, BDMIgnore, BDMRecursive
 from bdm.encoding import decode_string as dec
 
 
@@ -48,7 +48,7 @@ def test_partition_ignore(x, shape, expected):
     (np.ones((20, )), (12, ), 6, [ np.ones((12, )), np.ones((8, ))])
 ])
 def test_partition_shrink(x, shape, min_length, expected):
-    bdm = BDMShrink(ndim=len(shape), shape=shape, min_length=min_length)
+    bdm = BDMRecursive(ndim=len(shape), shape=shape, min_length=min_length)
     output = [ p for p in bdm.partition(x, shape=shape, min_length=min_length) ]
     assert len(output) == len(expected)
     assert all([ np.array_equal(o, e) for o, e in zip(output, expected) ])

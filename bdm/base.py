@@ -111,7 +111,7 @@ class BDMBase:
         self._ctm = get_ctm_dataset(self.ctmname)
         self._sep = '-'
 
-    def partition(self, x, shape=None, indexes=None):
+    def partition(self, X, shape=None, indexes=None):
         """Standard partition stage function.
 
         Parameters
@@ -151,11 +151,11 @@ class BDMBase:
         """
         if not shape:
             shape = self.shape
-        if len(x.shape) != len(self.shape):
+        if len(X.shape) != len(self.shape):
             raise AttributeError(
                 "dataset and slice shapes does not have the same number of axes"
             )
-        r_shape = get_reduced_shape(x, shape, length_only=False)
+        r_shape = get_reduced_shape(X, shape, length_only=False)
         n_parts = int(np.multiply.reduce(r_shape))
         indexes = indexes if indexes else range(n_parts)
         width = shape[0]
@@ -166,7 +166,7 @@ class BDMBase:
                 idx = tuple(slice(k*width, k*width + slice_shift) for k in r_idx)
             else:
                 idx = tuple(slice(k, k + width) for k in r_idx)
-            yield x[idx]
+            yield X[idx]
 
     def lookup(self, parts):
         """Lookup CTM values for parts in a reference dataset.
@@ -229,12 +229,12 @@ class BDMBase:
         counter = Counter(ctms)
         return counter
 
-    def count_and_lookup(self, x, **kwds):
+    def count_and_lookup(self, X, **kwds):
         """Count parts and assign complexity values.
 
         Parameters
         ----------
-        x : array_like
+        X : array_like
             Dataset representation as a :py:class:`numpy.ndarray`.
             Number of axes must agree with the `ndim` attribute.
         kwds :
@@ -253,7 +253,7 @@ class BDMBase:
         >>> bdm.count_and_lookup(np.ones((12, ), dtype=int)) # doctest: +FLOAT_CMP
         Counter({('111111111111', 25.610413747641715): 1})
         """
-        parts = self.partition(x, **kwds)
+        parts = self.partition(X, **kwds)
         ctms = self.lookup(parts)
         counter = self.aggregate(ctms)
         return counter
@@ -287,12 +287,12 @@ class BDMBase:
             bdm += ctm + np.log2(n)
         return bdm
 
-    def bdm(self, x, raise_if_zero=True):
+    def bdm(self, X, raise_if_zero=True):
         """Approximate complexity of a dataset.
 
         Parameters
         ----------
-        x : array_like
+        X : array_like
             Dataset representation as a :py:class:`numpy.ndarray`.
             Number of axes must agree with the `ndim` attribute.
         raise_if_zero: bool
@@ -316,7 +316,7 @@ class BDMBase:
         >>> bdm.bdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         25.176631293734488
         """
-        counter = self.count_and_lookup(x)
+        counter = self.count_and_lookup(X)
         cmx = self.compute_bdm(counter)
         if raise_if_zero and cmx == 0:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
@@ -352,12 +352,12 @@ class BDMBase:
             ent -= p*np.log2(p)
         return ent
 
-    def entropy(self, x):
+    def entropy(self, X):
         """Block entropy of a dataset.
 
         Parameters
         ----------
-        x : array_like
+        X : array_like
             Dataset representation as a :py:class:`numpy.ndarray`.
             Number of axes must agree with the `ndim` attribute.
 
@@ -373,7 +373,7 @@ class BDMBase:
         >>> bdm.entropy(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         0.0
         """
-        counter = self.count_and_lookup(x)
+        counter = self.count_and_lookup(X)
         return self.compute_entropy(counter)
 
 
@@ -390,7 +390,7 @@ class BDMIgnore(BDMBase):
         """Initialization method."""
         super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname)
 
-    def partition(self, x, shape=None, indexes=None):
+    def partition(self, X, shape=None, indexes=None):
         """Partition with ignore leftovers boundary condition.
 
         See Also
@@ -406,13 +406,13 @@ class BDMIgnore(BDMBase):
         """
         if not shape:
             shape = self.shape
-        for part in super().partition(x, shape=shape, indexes=indexes):
+        for part in super().partition(X, shape=shape, indexes=indexes):
             if part.shape == shape:
                 yield part
 
 
-class BDMShrink(BDMBase):
-    """Block decomposition method with shrink boundary condition.
+class BDMRecursive(BDMBase):
+    """Block decomposition method with recursive boundary condition.
 
     Attributes
     ----------
@@ -425,14 +425,14 @@ class BDMShrink(BDMBase):
     --------
     For detailed documentation see :py:meth:`bdm.bdm.BDMBase.partition`.
     """
-    boundary_condition = 'shrink'
+    boundary_condition = 'recursive'
 
     def __init__(self, ndim, min_length, shape=None, ctmname=None):
         """Initialization method."""
         super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname)
         self.min_length = min_length
 
-    def partition(self, x, shape=None, indexes=None, min_length=None):
+    def partition(self, X, shape=None, indexes=None, min_length=None):
         """Partition algorithm with a shrinking parts' size.
 
         See Also
@@ -441,7 +441,7 @@ class BDMShrink(BDMBase):
 
         Examples
         --------
-        >>> bdm = BDMShrink(ndim=1, shape=(6, ), min_length=4)
+        >>> bdm = BDMRecursive(ndim=1, shape=(6, ), min_length=4)
         >>> [ p for p in bdm.partition(np.ones(10, )) ]
         [array([1., 1., 1., 1., 1., 1.]), array([1., 1., 1., 1.])]
         """
@@ -449,7 +449,7 @@ class BDMShrink(BDMBase):
             shape = self.shape
         if min_length is None:
             min_length = self.min_length
-        for part in super().partition(x, shape=shape, indexes=indexes):
+        for part in super().partition(X, shape=shape, indexes=indexes):
             if part.shape == shape:
                 yield part
             else:
