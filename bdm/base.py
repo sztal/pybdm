@@ -193,16 +193,13 @@ class BDMBase:
         >>> bdm = BDMBase(ndim=1, shift=0)
         >>> data = np.ones((12, ), dtype=int)
         >>> parts = bdm.partition(data, (12, ))
-        >>> [ x for x in bdm.lookup(parts) ]
-        [('111111111111', 1.95207842085224e-08)]
+        >>> [ x for x in bdm.lookup(parts) ] # doctest: +FLOAT_CMP
+        [('111111111111', 25.610413747641715)]
         """
         for part in parts:
             key = string_from_array(part)
             try:
-                if self._sep in key:
-                    cmx = self._ctm[key]
-                else:
-                    cmx = self._ctm.get(key, self._ctm[key.lstrip('0')])
+                cmx = self._ctm[key]
             except KeyError:
                 raise KeyError(f"CTM dataset does not contain object '{key}'")
             yield key, cmx
@@ -226,8 +223,8 @@ class BDMBase:
         >>> data = np.ones((24, ), dtype=int)
         >>> parts = bdm.partition(data, (12, ))
         >>> ctms = bdm.lookup(parts)
-        >>> bdm.aggregate(ctms)
-        Counter({('111111111111', 1.95207842085224e-08): 2})
+        >>> bdm.aggregate(ctms) # doctest: +FLOAT_CMP
+        Counter({('111111111111', 25.610413747641715): 2})
         """
         counter = Counter(ctms)
         return counter
@@ -253,8 +250,8 @@ class BDMBase:
         --------
         >>> import numpy as np
         >>> bdm = BDMBase(ndim=1, shift=0)
-        >>> bdm.count_and_lookup(np.ones((12, ), dtype=int))
-        Counter({('111111111111', 1.95207842085224e-08): 1})
+        >>> bdm.count_and_lookup(np.ones((12, ), dtype=int)) # doctest: +FLOAT_CMP
+        Counter({('111111111111', 25.610413747641715): 1})
         """
         parts = self.partition(x, **kwds)
         ctms = self.lookup(parts)
@@ -280,7 +277,7 @@ class BDMBase:
         >>> bdm = BDMBase(ndim=1, shift=0)
         >>> c1 = Counter([('111111111111', 1.95207842085224e-08)])
         >>> c2 = Counter([('111111111111', 1.95207842085224e-08)])
-        >>> bdm.compute_bdm(c1, c2)
+        >>> bdm.compute_bdm(c1, c2) # doctest: +FLOAT_CMP
         1.000000019520784
         """
         counter = reduce(lambda x, y: x+y, counters)
@@ -316,7 +313,7 @@ class BDMBase:
         --------
         >>> import numpy as np
         >>> bdm = BDMBase(ndim=2, shift=0)
-        >>> bdm.bdm(np.ones((12, 12), dtype=int))
+        >>> bdm.bdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         25.176631293734488
         """
         counter = self.count_and_lookup(x)
@@ -324,6 +321,60 @@ class BDMBase:
         if raise_if_zero and cmx == 0:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
         return cmx
+
+    def compute_entropy(self, *counters):
+        """Compute block entropy from counter.
+
+        Parameters
+        ----------
+        *counters :
+            Counter objects grouping object keys and occurences.
+
+        Returns
+        -------
+        float
+            Block entropy in base 2.
+
+        Examples
+        --------
+        >>> from collections import Counter
+        >>> bdm = BDMBase(ndim=1, shift=0)
+        >>> c1 = Counter([('111111111111', 1.95207842085224e-08)])
+        >>> c2 = Counter([('000000000000', 1.95207842085224e-08)])
+        >>> bdm.compute_entropy(c1, c2) # doctest: +FLOAT_CMP
+        1.0
+        """
+        counter = reduce(lambda x, y: x+y, counters)
+        ncounts = sum(counter.values())
+        ent = 0
+        for n in counter.values():
+            p = n/ncounts
+            ent -= p*np.log2(p)
+        return ent
+
+    def entropy(self, x):
+        """Block entropy of a dataset.
+
+        Parameters
+        ----------
+        x : array_like
+            Dataset representation as a :py:class:`numpy.ndarray`.
+            Number of axes must agree with the `ndim` attribute.
+
+        Returns
+        -------
+        float
+            Block entropy in base 2.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> bdm = BDMBase(ndim=2, shift=0)
+        >>> bdm.entropy(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
+        0.0
+        """
+        counter = self.count_and_lookup(x)
+        return self.compute_entropy(counter)
 
 
 class BDMIgnore(BDMBase):
