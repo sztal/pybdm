@@ -2,6 +2,7 @@
 # pylint: disable=W0621
 import os
 import pytest
+from pytest import approx
 from bdm.encoding import array_from_string
 
 s0 = '0'*24
@@ -41,19 +42,19 @@ class TestBDM:
     @pytest.mark.parametrize('x,expected', bdm1_test_input)
     def test_complexity_d1(self, bdm_d1, x, expected):
         output = bdm_d1.bdm(x)
-        assert output == expected
+        assert output == approx(expected)
 
     @pytest.mark.parametrize('x,expected', bdm2_test_input)
     def test_complexity_d2(self, bdm_d2, x, expected):
         output = bdm_d2.bdm(x)
-        assert output == expected
+        assert output == approx(expected)
 
     @pytest.mark.parametrize('x,expected', ent1_test_input)
     def test_entropy_d1(self, bdm_d1, x, expected):
         output = bdm_d1.entropy(x)
-        assert output == expected
+        assert output == approx(expected)
 
     @pytest.mark.parametrize('x,expected', ent2_test_input)
     def test_entropy_d2(self, bdm_d2, x, expected):
         output = bdm_d2.entropy(x)
-        assert output == expected
+        assert output == approx(expected)

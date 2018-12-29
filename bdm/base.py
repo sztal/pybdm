@@ -193,7 +193,7 @@ class BDMBase:
         >>> bdm = BDMBase(ndim=1, shift=0)
         >>> data = np.ones((12, ), dtype=int)
         >>> parts = bdm.partition(data, (12, ))
-        >>> [ x for x in bdm.lookup(parts) ]
+        >>> [ x for x in bdm.lookup(parts) ] # doctest: +FLOAT_CMP
         [('111111111111', 25.610413747641715)]
         """
         for part in parts:
@@ -223,7 +223,7 @@ class BDMBase:
         >>> data = np.ones((24, ), dtype=int)
         >>> parts = bdm.partition(data, (12, ))
         >>> ctms = bdm.lookup(parts)
-        >>> bdm.aggregate(ctms)
+        >>> bdm.aggregate(ctms) # doctest: +FLOAT_CMP
         Counter({('111111111111', 25.610413747641715): 2})
         """
         counter = Counter(ctms)
@@ -250,7 +250,7 @@ class BDMBase:
         --------
         >>> import numpy as np
         >>> bdm = BDMBase(ndim=1, shift=0)
-        >>> bdm.count_and_lookup(np.ones((12, ), dtype=int))
+        >>> bdm.count_and_lookup(np.ones((12, ), dtype=int)) # doctest: +FLOAT_CMP
         Counter({('111111111111', 25.610413747641715): 1})
         """
         parts = self.partition(x, **kwds)
@@ -277,7 +277,7 @@ class BDMBase:
         >>> bdm = BDMBase(ndim=1, shift=0)
         >>> c1 = Counter([('111111111111', 1.95207842085224e-08)])
         >>> c2 = Counter([('111111111111', 1.95207842085224e-08)])
-        >>> bdm.compute_bdm(c1, c2)
+        >>> bdm.compute_bdm(c1, c2) # doctest: +FLOAT_CMP
         1.000000019520784
         """
         counter = reduce(lambda x, y: x+y, counters)
@@ -313,7 +313,7 @@ class BDMBase:
         --------
         >>> import numpy as np
         >>> bdm = BDMBase(ndim=2, shift=0)
-        >>> bdm.bdm(np.ones((12, 12), dtype=int))
+        >>> bdm.bdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         25.176631293734488
         """
         counter = self.count_and_lookup(x)
@@ -341,7 +341,7 @@ class BDMBase:
         >>> bdm = BDMBase(ndim=1, shift=0)
         >>> c1 = Counter([('111111111111', 1.95207842085224e-08)])
         >>> c2 = Counter([('000000000000', 1.95207842085224e-08)])
-        >>> bdm.compute_entropy(c1, c2)
+        >>> bdm.compute_entropy(c1, c2) # doctest: +FLOAT_CMP
         1.0
         """
         counter = reduce(lambda x, y: x+y, counters)
@@ -370,7 +370,7 @@ class BDMBase:
         --------
         >>> import numpy as np
         >>> bdm = BDMBase(ndim=2, shift=0)
-        >>> bdm.entropy(np.ones((12, 12), dtype=int))
+        >>> bdm.entropy(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         0.0
         """
         counter = self.count_and_lookup(x)
