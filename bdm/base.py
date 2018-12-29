@@ -15,7 +15,7 @@ for computing approximated complexity via BDM.
 from collections import Counter
 from functools import reduce
 import numpy as np
-from .utils import get_ctm_dataset, get_reduced_idx, get_reduced_shape
+from .utils import get_ctm_dataset, slice_dataset
 from .encoding import string_from_array
 
 
@@ -111,7 +111,7 @@ class BDMBase:
         self._ctm = get_ctm_dataset(self.ctmname)
         self._sep = '-'
 
-    def partition(self, X, shape=None, indexes=None):
+    def partition(self, X, shape=None):
         """Standard partition stage function.
 
         Parameters
@@ -121,10 +121,6 @@ class BDMBase:
         shape : tuple
             Dataset parts' shape.
             Use `shape` defined on the object if ``None``.
-        indexes : iterable or None
-            Reduced dataset 1D indexes to iterate over.
-            Useful when running partition in parallel.
-            Iterate over all parts if ``None``.
 
         Yields
         ------
@@ -151,22 +147,7 @@ class BDMBase:
         """
         if not shape:
             shape = self.shape
-        if len(X.shape) != len(self.shape):
-            raise AttributeError(
-                "dataset and slice shapes does not have the same number of axes"
-            )
-        r_shape = get_reduced_shape(X, shape, length_only=False)
-        n_parts = int(np.multiply.reduce(r_shape))
-        indexes = indexes if indexes else range(n_parts)
-        width = shape[0]
-        slice_shift = self.shift if self.shift > 0 else width
-        for i in indexes:
-            r_idx = get_reduced_idx(i, r_shape)
-            if self.shift <= 0:
-                idx = tuple(slice(k*width, k*width + slice_shift) for k in r_idx)
-            else:
-                idx = tuple(slice(k, k + width) for k in r_idx)
-            yield X[idx]
+        yield from slice_dataset(X, shape=shape, shift=self.shift)
 
     def lookup(self, parts):
         """Lookup CTM values for parts in a reference dataset.
@@ -390,7 +371,7 @@ class BDMIgnore(BDMBase):
         """Initialization method."""
         super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname)
 
-    def partition(self, X, shape=None, indexes=None):
+    def partition(self, X, shape=None):
         """Partition with ignore leftovers boundary condition.
 
         See Also
@@ -406,7 +387,7 @@ class BDMIgnore(BDMBase):
         """
         if not shape:
             shape = self.shape
-        for part in super().partition(X, shape=shape, indexes=indexes):
+        for part in super().partition(X, shape=shape):
             if part.shape == shape:
                 yield part
 
@@ -432,7 +413,7 @@ class BDMRecursive(BDMBase):
         super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname)
         self.min_length = min_length
 
-    def partition(self, X, shape=None, indexes=None, min_length=None):
+    def partition(self, X, shape=None, min_length=None):
         """Partition algorithm with a shrinking parts' size.
 
         See Also
@@ -449,7 +430,7 @@ class BDMRecursive(BDMBase):
             shape = self.shape
         if min_length is None:
             min_length = self.min_length
-        for part in super().partition(X, shape=shape, indexes=indexes):
+        for part in super().partition(X, shape=shape):
             if part.shape == shape:
                 yield part
             else:
@@ -457,4 +438,4 @@ class BDMRecursive(BDMBase):
                 if min_dim_length < min_length:
                     continue
                 shrinked_shape = tuple(min_dim_length for _ in range(len(shape)))
-                yield from super().partition(part, shape=shrinked_shape, indexes=None)
+                yield from super().partition(part, shape=shrinked_shape)

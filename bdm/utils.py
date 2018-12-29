@@ -130,6 +130,56 @@ def get_reduced_idx(i, shape):
     )
     return r_idx
 
+def slice_dataset(X, shape, shift=0):
+    """Slice a dataset into *n* pieces.
+
+    Slicing is done in a way that ensures that only pieces
+    on boundaries of the sliced dataset can have leftovers
+    in regard to a specified shape.
+    This is very important for proper computing of BDM in the context
+    of parallel processing.
+
+    Parameters
+    ----------
+    X : array_like
+        Daataset represented as a *Numpy* array.
+    shape : tuple
+        Slice shape.
+    shift : int
+        Shift value for slicing.
+        Nonoverlaping slicing if non-positive.
+
+    Yields
+    ------
+    array_like
+        Dataset slices.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> X = np.ones((5, 3), dtype=int)
+    >>> [ x for x in slice_dataset(X, (3, 3)) ]
+    [array([[1, 1, 1],
+           [1, 1, 1],
+           [1, 1, 1]]), array([[1, 1, 1],
+           [1, 1, 1]])]
+    """
+    if len(shape) != X.ndim:
+        raise ArithmeticError(
+            "dataset and slice shape does not have the same number of axes"
+        )
+    r_shape = get_reduced_shape(X, shape, length_only=False)
+    n_parts = int(np.multiply.reduce(r_shape))
+    width = shape[0]
+    slice_shift = shift if shift > 0 else width
+    for i in range(n_parts):
+        r_idx = get_reduced_idx(i, r_shape)
+        if shift <= 0:
+            idx = tuple(slice(k*width, k*width + slice_shift) for k in r_idx)
+        else:
+            idx = tuple(slice(k, k + width) for k in r_idx)
+        yield X[idx]
+
 def list_ctm_datasets():
     """Get a list of available precomputed CTM datasets.
 

@@ -12,19 +12,19 @@ from bdm.encoding import decode_string as dec
 def bdm_d2_base():
     return BDMBase(ndim=2, shift=0)
 
-@pytest.mark.parametrize('x,shift,shape,reduced_idx,expected', [
-    (np.ones((2, 2)), 0, (2, 2), None, [ np.ones((2, 2)) ]),
-    (np.ones((5, 5)), 0, (4, 4), None, [
+@pytest.mark.parametrize('x,shift,shape,expected', [
+    (np.ones((2, 2)), 0, (2, 2), [ np.ones((2, 2)) ]),
+    (np.ones((5, 5)), 0, (4, 4), [
         np.ones((4, 4)), np.ones((4, 1)), np.ones((1, 4)), np.ones((1, 1))
     ]),
-    (np.array([[1,2,3], [4,5,6], [7,8,9]]), 1, (2,2), None, [
+    (np.array([[1,2,3], [4,5,6], [7,8,9]]), 1, (2,2), [
         np.array([[1,2],[4,5]]), np.array([[2,3],[5,6]]),
         np.array([[4,5],[7,8]]), np.array([[5,6],[8,9]])
     ])
 ])
-def test_partition(x, shift, shape, reduced_idx, expected):
+def test_partition(x, shift, shape, expected):
     bdm = BDMBase(ndim=2, shift=shift, shape=shape)
-    output = [ p for p in bdm.partition(x, shape, reduced_idx) ]
+    output = [ p for p in bdm.partition(x, shape) ]
     assert len(output) == len(expected)
     assert all([ np.array_equal(o, e) for o, e in zip(output, expected) ])
 
