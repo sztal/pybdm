@@ -1,7 +1,7 @@
 """Tests for utility functions."""
 import pytest
 import numpy as np
-from bdm.utils import get_reduced_shape, get_reduced_idx
+from bdm.utils import get_reduced_shape, get_reduced_idx, slice_dataset
 
 
 @pytest.mark.parametrize('x,shape,shift,length_only,expected', [
@@ -30,3 +30,11 @@ def test_get_reduced_shape(x, shape, shift, length_only, expected):
 def test_get_reduced_idx(i, shape, expected):
     output = get_reduced_idx(i, shape)
     assert output == expected
+
+@pytest.mark.parametrize('X,shape,shift,expected', [
+    (np.ones((10, 5)), (5, 5), 0, (np.ones((5, 5)), np.ones((5, 5)))),
+    (np.ones((6, 6)), (5, 5), 1, (np.ones((5,5)), np.ones((5,5)), np.ones((5,5)), np.ones((5,5))))
+])
+def test_slice_dataset(X, shape, shift, expected):
+    for o, e in zip(slice_dataset(X, shape, shift), expected):
+        assert np.array_equal(o, e)
