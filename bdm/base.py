@@ -194,7 +194,7 @@ class BDMBase:
         >>> data = np.ones((12, ), dtype=int)
         >>> parts = bdm.partition(data, (12, ))
         >>> [ x for x in bdm.lookup(parts) ]
-        [('111111111111', 1.95207842085224e-08)]
+        [('111111111111', 25.610413747641715)]
         """
         for part in parts:
             key = string_from_array(part)
@@ -224,7 +224,7 @@ class BDMBase:
         >>> parts = bdm.partition(data, (12, ))
         >>> ctms = bdm.lookup(parts)
         >>> bdm.aggregate(ctms)
-        Counter({('111111111111', 1.95207842085224e-08): 2})
+        Counter({('111111111111', 25.610413747641715): 2})
         """
         counter = Counter(ctms)
         return counter
@@ -251,7 +251,7 @@ class BDMBase:
         >>> import numpy as np
         >>> bdm = BDMBase(ndim=1, shift=0)
         >>> bdm.count_and_lookup(np.ones((12, ), dtype=int))
-        Counter({('111111111111', 1.95207842085224e-08): 1})
+        Counter({('111111111111', 25.610413747641715): 1})
         """
         parts = self.partition(x, **kwds)
         ctms = self.lookup(parts)
@@ -342,7 +342,7 @@ class BDMBase:
         >>> c1 = Counter([('111111111111', 1.95207842085224e-08)])
         >>> c2 = Counter([('000000000000', 1.95207842085224e-08)])
         >>> bdm.compute_entropy(c1, c2)
-            1.0
+        1.0
         """
         counter = reduce(lambda x, y: x+y, counters)
         ncounts = sum(counter.values())
