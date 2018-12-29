@@ -2,8 +2,11 @@
 # pylint: disable=W0621
 import os
 import pytest
+import numpy as np
 from pytest import approx
+from joblib import Parallel, delayed
 from bdm.encoding import array_from_string
+from bdm.utils import slice_dataset
 
 s0 = '0'*24
 s1 = '0'*12+'1'*12
@@ -57,4 +60,14 @@ class TestBDM:
     @pytest.mark.parametrize('x,expected', ent2_test_input)
     def test_entropy_d2(self, bdm_d2, x, expected):
         output = bdm_d2.entropy(x)
+        assert output == approx(expected)
+
+    @pytest.mark.slow
+    def test_bdm_parallel(self, bdm_d2):
+        X = np.ones((500, 500), dtype=int)
+        expected = bdm_d2.bdm(X)
+        counters = Parallel(n_jobs=2) \
+            (delayed(bdm_d2.count_and_lookup)(d)
+             for d in slice_dataset(X, (100, 100)))
+        output = bdm_d2.compute_bdm(*counters)
         assert output == approx(expected)
