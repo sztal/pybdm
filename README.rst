@@ -1,6 +1,6 @@
-=============================
-PyBDM
-=============================
+=============================================================
+PyBDM: Python interface to the *Block Deincomposition Method*
+=============================================================
 
 .. image:: https://badge.fury.io/py/pybdm.png
     :target: http://badge.fury.io/py/pybdm
@@ -8,12 +8,24 @@ PyBDM
 .. image:: https://travis-ci.org/sztal/pybdm.png?branch=master
     :target: https://travis-ci.org/sztal/pybdm
 
-Python implementation of block decomposition method for approximating
-algorithmic complexity. It is based on a *split-apply-combine* approach.
+
+The Block Decomposition Method (BDM) approximates algorithmic complexity
+of a dataset of arbitrary size, that is, the length of the shortest computer
+program that generates it. This is not trivial as algorithmic complexity
+is not a computable quantity in the general case and estimation of
+algorithmic complexity of a dataset can be very useful as it points to
+mechanistic connections between elements of a system, even such that
+do not yield any regular statistical patterns that can be captured with
+more traditional tools based on probability theory and information theory.
+
+Currently 1D and 2D binary arrays are supported, but this may be extended to higher dimensionalities and more complex alphabets in the future.
+
+BDM and the necessary parts of the algorithmic information theory
+it is based on are described in `this paper <https://www.mdpi.com/1099-4300/20/8/605>`__.
 
 
 Installation
-------------
+============
 
 Local development::
 
@@ -21,103 +33,92 @@ Local development::
     cd pybdm
     pip install --editable .
 
-Standard usage::
+Development version installation::
+
+    pip install git+https://github.com/sztal/pybdm.git
+
+Standard installation::
 
     pip install bdm
 
 
-Collaboration & git workflow
-----------------------------
+Usage
+=====
 
-The general idea is to separate ongoing work from the *master* branch
-(main development history). This will help ensuree that no accidental
-and unwanted changes will be pushed to overwrite the main codebase.
-Thus, a following workflow should be kept at all times:
+The BDM is implemented using the object-oriented approach and expects
+input represented as `Numpy <http://www.numpy.org/>`__ arrays of integer type.
 
-#. Start working on a new feature.
-#. Synchronize the local repository with the remote
-   This is done usually by invoking: ``git pull --rebase origin <branch>``,
-   where ``<branch>`` is the name of a branch to which one synchronizes,
-   usually this will be the *master* branch.
-#. Create a new branch for feature development with ``git checkout -b <branch name>``.
-#. Work on a feature on the new branch and make as many commits as needed.
-#. When done, push the new branch to the repository and create a pull request.
-   You can read more about pull requests
-   `here <https://help.github.com/articles/about-pull-requests/>`__ and
-   `here <https://help.github.com/articles/creating-a-pull-request/>`__.
-#. The team discusses the propose changes and apply corrections and adjustments
-   if needed.
-#. When everyone agree that the feature is ready, the new branch is merged with
-   a target branch (usually the *master* branch) by the repository owner.
+Binary sequences (1D)
+---------------------
 
-The above workflow is an example of *shared repository* approach.
-An alternative called *fork-and-pull* approach is based on everyone
-working on a completely separate forks of the main repository and doing
-between repository pull requests. This approach seems to be a little bit
-of an overkill for a team of few persons.
+.. code-block:: python
 
+    import numpy as np
+    from bdm import BDM
 
-Static code analysis
+    # Create a dataset
+    X = np.ones((100,), dtype=int)
+
+    # Initialize BDM object
+    # ndim argument specifies dimensionality of BDM
+    bdm = BDM(ndim=1)
+
+    # Compute BDM
+    bdm.bdm(X)
+
+Binary matrices (2D)
 --------------------
 
-At least for the beginnign let's try to keep to the *PyLint* configuration
-provided in the repo.
+.. code-block:: python
+
+    import numpy as np
+    from bdm import BDM
+
+    # Create a dataset
+    X = np.ones((100, 100), dtype=int)
+
+    # Initialize BDM object
+    bdm = BDM(ndim=2)
+
+    # Compute BDM
+    bdm.bdm(X)
+
+Parallel processing
+-------------------
+
+*PyBDM* was designed with parallel processing in mind.
+Using modern packages for parallelization such as
+`joblib <https://joblib.readthedocs.io/en/latest/parallel.html>`__
+makes it really easy to compute BDM for massive objects.
+
+In this example we will slice a 1000x1000 dataset into 200x200 pieces
+compute so-called counter objects (final BDM computation operates on such objects)
+in parallel in 4 independent processes, and aggregate the results
+into a single BDM approximation of the algorithmic complexity of the dataset.
+
+.. code-block:: python
+
+    import numpy as np
+    from joblib import Parallel, delayed
+    from bdm import BDM
+    from bdm.utils import slice_dataset
+
+    # Create a dataset
+    X = np.ones((1000, 1000), dtype=int)
+
+    # Initialize BDM object
+    BDM = bdm(ndim=2)
+
+    # Compute counter objects in parallel
+    counters = Parallel(n_jobs=4) \
+        (delayed(bdm.count_and_lookup)(d) for d in slice_dataset(X, (200, 200)))
+
+    # Compute BDM
+    bdm.compute_bdm(*counters)
 
 
-Unit testing
-------------
+Authors & Contact
+=================
 
-It is preferable, especially in the longterm, to follow the
-*Test Driven Development* approach. This is about writing modular code
-(decompose complicated logic into simple methods/functions) alongside with
-unit tests (simple automatically run functions that test the implementations).
-
-PyTest_ is a very powerful and flexible library for unit testing, so it
-seems to be a good choice for this. It is quite complicated in advanced usecases,
-but standard usage is extremely simple. It also make benchmarking and profiling
-code very easy.
-
-Documentation
--------------
-
-I recommend to use the so-called
-`Numpy style <https://numpydoc.readthedocs.io/en/latest/format.html>`__
-documentation. It makes it very easy to read docstrings in the source code and
-is not to hard to write (check the skeleton code of the ``BDM`` class).
-It can also utilize all the power of the
-`reStructuredText <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`__
-markup.
-
-
-Package structure
------------------
-
-TODO
-
-At this point it is important to mention only one special directory
-
-:``_ref``:
-    It contains the reference python implementation of 2D BDM.
-    It will not be included in the final package, but it will be perhaps
-    of a great use during the development
-    (i.e. for informing and validating the new implementation).
-
-
-Useful VS Code extensions
--------------------------
-
-Here is a short list of extensions for the VS Code IDE, that are often useful:
-
-* `Python extension <https://marketplace.visualstudio.com/items?itemName=ms-python.python>`__
-* `Anaconda extension pack <https://marketplace.visualstudio.com/items?itemName=ms-python.anaconda-extension-pack>`__
-  (for those who use *Anaconda* python distribution)
-* `RST preview <https://marketplace.visualstudio.com/items?itemName=tht13.rst-vscode>`__
-  (useful for previewing *reStructuredText* files, such as this README)
-
-Features
---------
-
-* TODO
-
-
-.. _PyTest: https://docs.pytest.org/en/latest/
+* Szymon Talaga <stalaga@protonmail.com>
+* Kostas Tsampourakis <kostas.tsampourakis@gmail.com>

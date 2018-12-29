@@ -1,11 +1,12 @@
 =======
-Credits
+Authors
 =======
 
-Development Lead
-----------------
+Core Team
+---------
 
 * Szymon Talaga <stalaga@protonmail.com>
+* Kostas Tsampourakis <kostas.tsampourakis@gmail.com>
 
 Contributors
 ------------
