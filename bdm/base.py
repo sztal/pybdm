@@ -87,7 +87,7 @@ class BDMBase:
         2: (4, 4)
     }
     _ndim_to_ctm = {
-        1: 'CTM-B2-D12B',
+        1: 'CTM-B2-D12',
         2: 'CTM-B2-D4x4'
     }
     boundary_condition = 'none'
