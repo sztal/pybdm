@@ -44,7 +44,8 @@ setup(
         'pytest-profiling',
         'pytest-benchmark',
         'pytest-doctestplus',
-        'coverage'
+        'coverage',
+        'joblib'
     ],
     test_suite='tests',
     install_requires=[
