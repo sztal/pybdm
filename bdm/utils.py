@@ -6,7 +6,7 @@ import numpy as np
 from .ctmdata import CTM_DATASETS as _ctm_datasets, __name__ as _ctmdata_path
 
 
-def get_reduced_shape(x, shape, shift=0, length_only=True):
+def get_reduced_shape(X, shape, shift=0, size_only=True):
     """Get shape of a reduced dataset.
 
     The notion of reduced dataset shape is central for the core partition algorithm.
@@ -45,7 +45,7 @@ def get_reduced_shape(x, shape, shift=0, length_only=True):
 
     Parameters
     ----------
-    x : array_like
+    X : array_like
         Dataset of arbitrary dimensionality represented as a *Numpy* array.
     shape : tuple
         Shape of the dataset's parts. Has to be symmetric.
@@ -53,16 +53,16 @@ def get_reduced_shape(x, shape, shift=0, length_only=True):
         Shift of the sliding window.
         In general, if positive, should not be greater than ``1``.
         Shift by partition shape if not positive.
-    length_only : bool
+    size_only : bool
         Should only the 1D length of the reduced dataset be returned.
         1D length is the total number of dataset parts.
 
     Returns
     -------
     tuple
-        Shape tuple if ``length_only=False``.
+        Shape tuple if ``size_only=False``.
     int
-        Number of parts if ``length_only=True``.
+        Number of parts if ``size_only=True``.
 
     Raises
     ------
@@ -73,22 +73,22 @@ def get_reduced_shape(x, shape, shift=0, length_only=True):
     Examples
     --------
     >>> x = np.ones((5, 5))
-    >>> get_reduced_shape(x, (2, 2), length_only=False)
+    >>> get_reduced_shape(x, (2, 2), size_only=False)
     (3, 3)
-    >>> get_reduced_shape(x, (2, 2), length_only=True)
+    >>> get_reduced_shape(x, (2, 2), size_only=True)
     9
     """
     if len(set(shape)) != 1:
         raise AttributeError(f"Partition shape is not symmetric {shape}")
-    if len(shape) != x.ndim:
-        x = x.squeeze()
-        if len(shape) != x.ndim:
+    if len(shape) != X.ndim:
+        X = X.squeeze()
+        if len(shape) != X.ndim:
             raise AttributeError("Dataset and parts have different numbers of axes")
     if shift <= 0:
-        r_shape = tuple(int(np.ceil(x / p)) for x, p in zip(x.shape, shape))
+        r_shape = tuple(int(np.ceil(x / p)) for x, p in zip(X.shape, shape))
     else:
-        r_shape = tuple(int(x-p+1) for x, p in zip(x.shape, shape))
-    if length_only:
+        r_shape = tuple(int(x-p+1) for x, p in zip(X.shape, shape))
+    if size_only:
         return int(np.multiply.reduce(r_shape))
     return r_shape
 
@@ -168,7 +168,7 @@ def slice_dataset(X, shape, shift=0):
         raise ArithmeticError(
             "dataset and slice shape does not have the same number of axes"
         )
-    r_shape = get_reduced_shape(X, shape, length_only=False)
+    r_shape = get_reduced_shape(X, shape, size_only=False)
     n_parts = int(np.multiply.reduce(r_shape))
     width = shape[0]
     slice_shift = shift if shift > 0 else width

@@ -1,6 +1,6 @@
 """Core algorithms operating on ``BDM`` objects."""
-import numpy as np
-from .utils import get_reduced_idx
+from itertools import product
+from bdm.utils import get_reduced_shape
 
 
 class PerturbationExperiment:
@@ -11,10 +11,10 @@ class PerturbationExperiment:
 
     Attributes
     ----------
+    X : array_like
+        Dataset for perturbation analysis.
     bdm : BDMBase
         BDM object.
-    data : array_like
-        Dataset for perturbation analysis.
     counter : Counter
         Counter of BDM slices.
     **kwds :
@@ -22,47 +22,82 @@ class PerturbationExperiment:
         :py:meth:`bdm.base.BDMBase.count_and_lookup`
         if `counter` is ``None``.
     """
-    def __init__(self, bdm, data, counter=None, **kwds):
+    def __init__(self, X, bdm, counter=None, **kwds):
         """Initialization method."""
+        self.X = X
         self.bdm = bdm
-        self.data = data
-        self.counter = counter if counter else bdm.count_and_lookup(data, **kwds)
+        self.counter = counter if counter else bdm.count_and_lookup(X, **kwds)
+        self._r_shape = \
+            get_reduced_shape(X, bdm.shape, shift=bdm.shift, size_only=False)
 
     @property
-    def dsize(self):
+    def size(self):
         """Data size getter."""
-        return self.data.size
+        return self.X.size
 
     @property
-    def dshape(self):
+    def shape(self):
         """Data shape getter."""
-        return self.data.shape
+        return self.X.shape
 
     @property
-    def dndim(self):
+    def ndim(self):
         """Data number of axes getter."""
-        return self.data.ndim
+        return self.X.ndim
 
-    def num_to_idx(self, i):
-        """Convert slice number to indexes.
+    def _idx_to_slices(self, idx):
+        def _slice(i, k):
+            start = i - i % k
+            end = start + k
+            return slice(start, end)
+        shift = self.bdm.shift
+        if shift <= 0:
+            s = tuple(_slice(i, k) for i, k in zip(idx, self.bdm.shape))
+            yield s
+            return
+        idxs = tuple(range(max(i-k+1, 0), i+1) for i, k in zip(idx, self.bdm.shape))
+        for i in product(*idxs):
+            s = tuple(slice(m, m+n) for m, n in zip(i, self.bdm.shape))
+            yield s
 
-        Parameters
-        ----------
-        i : int
-            Slice number ranging from 0 to `self.dsize - 1`.
-        """
-        return get_reduced_idx(i, self.dshape)
-
-    def idx_to_num(self, idx):
-        """Convert indexes to a slice number.
+    def update(self, idx, value=None):
+        """Update element of the dataset.
 
         Parameters
         ----------
         idx : tuple
-            Indexes of an entry.
+            Element index tuple.
+        value : int or None
+            Value to assign.
+            If ``None`` then new valuu is a bit flip.
         """
-        mods = tuple(
-            int(np.multiply.reduce(self.dshape[i:self.dndim-1]))
-            for i in range(self.dndim)
-        )
-        return sum(x*y for x, y in zip(idx, mods))
+        if value is None:
+            v = self.X[idx]
+            self.X[idx] = 1 if v == 0 else 0
+        else:
+            self.X[idx] = value
+
+    def perturb(self, idx, *args, dry_run=True):
+        """Perturb element of the dataset.
+
+        Parameters
+        ----------
+        idx : tuple
+            Index tuple of an element.
+        updater : int or callable or None
+            Value to switch to.
+            If callable then it is called on the element's value
+            to determine the new value.
+            If ``None`` then the updater stored in the object attribute is used.
+        *args :
+            Positional arguments passed to
+            :py:meth:`PerturbationExperiment.update`.
+        dry_run : bool
+            If ``True`` then change is not persisted.
+
+        Returns
+        -------
+        float :
+            BDM value change.
+        """
+        pass
