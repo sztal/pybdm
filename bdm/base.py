@@ -77,15 +77,13 @@ class BDMBase:
         Shift value for the partition algorithm.
         If ``0`` then datasets are sliced into non-overlapping parts.
         If ``1`` then datasets are sliced into overlapping parts.
+    n_symbols : int
+        Number of symbols in the alphabet.
     shape : tuple
         Shape of slices.
     ctmname : str
         Name of the CTM dataset.
     """
-    _ndim_to_shape = {
-        1: (12, ),
-        2: (4, 4)
-    }
     _ndim_to_ctm = {
         1: 'CTM-B2-D12',
         2: 'CTM-B2-D4x4'
@@ -104,10 +102,15 @@ class BDMBase:
             raise AttributeError("'shift' supports only values of `0` and `1`")
         self.ndim = ndim
         self.shift = shift
-        self.shape = shape if shape else self._ndim_to_shape[ndim]
-        if not self.shape or any([ x != self.shape[0] for x in self.shape ]):
-            raise AttributeError("'shape' has to be equal in each dimension")
         self.ctmname = ctmname if ctmname else self._ndim_to_ctm[ndim]
+        _n_sym, _shape = self.ctmname.split('-')[-2:]
+        self.n_symbols = int(_n_sym[1:])
+        if shape is None:
+            self.shape = tuple(int(x) for x in _shape[1:].split('x'))
+        elif any([ x != shape[0] for x in shape ]):
+            raise AttributeError("'shape' has to be equal in each dimension")
+        else:
+            self.shape = shape
         self._ctm = get_ctm_dataset(self.ctmname)
         self._sep = '-'
 
@@ -121,6 +124,9 @@ class BDMBase:
         shape : tuple
             Dataset parts' shape.
             Use `shape` defined on the object if ``None``.
+            This argument should not be usually used.
+            It is meant to be used only in implementations
+            of specialized recursive partition algorithms.
 
         Yields
         ------
@@ -210,7 +216,7 @@ class BDMBase:
         counter = Counter(ctms)
         return counter
 
-    def count_and_lookup(self, X, **kwds):
+    def count_and_lookup(self, X):
         """Count parts and assign complexity values.
 
         Parameters
@@ -218,8 +224,6 @@ class BDMBase:
         X : array_like
             Dataset representation as a :py:class:`numpy.ndarray`.
             Number of axes must agree with the `ndim` attribute.
-        kwds :
-            Optional keyword arguments passed to the partition method.
 
         Returns
         -------
@@ -234,7 +238,7 @@ class BDMBase:
         >>> bdm.count_and_lookup(np.ones((12, ), dtype=int)) # doctest: +FLOAT_CMP
         Counter({('111111111111', 25.610413747641715): 1})
         """
-        parts = self.partition(X, **kwds)
+        parts = self.partition(X)
         ctms = self.lookup(parts)
         counter = self.aggregate(ctms)
         return counter
@@ -413,7 +417,7 @@ class BDMRecursive(BDMBase):
         super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname)
         self.min_length = min_length
 
-    def partition(self, X, shape=None, min_length=None):
+    def partition(self, X, shape=None):
         """Partition algorithm with a shrinking parts' size.
 
         See Also
@@ -428,14 +432,12 @@ class BDMRecursive(BDMBase):
         """
         if not shape:
             shape = self.shape
-        if min_length is None:
-            min_length = self.min_length
         for part in super().partition(X, shape=shape):
             if part.shape == shape:
                 yield part
             else:
                 min_dim_length = min(part.shape)
-                if min_dim_length < min_length:
+                if min_dim_length < self.min_length:
                     continue
                 shrinked_shape = tuple(min_dim_length for _ in range(len(shape)))
                 yield from super().partition(part, shape=shrinked_shape)

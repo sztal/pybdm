@@ -4,15 +4,15 @@ import numpy as np
 from bdm.utils import get_reduced_shape, get_reduced_idx, slice_dataset
 
 
-@pytest.mark.parametrize('x,shape,shift,length_only,expected', [
+@pytest.mark.parametrize('x,shape,shift,size_only,expected', [
     (np.ones((50, 10)), (4, 4), 0, False, (13, 3)),
     (np.ones((50, 10)), (4, 4), 0, True, 39),
     (np.ones((50, 10)), (4, 4), 1, False, (47, 7)),
     (np.ones((4, 8)), (4, 4), 0, False, (1, 2)),
     (np.ones((4, 8)), (4, 4), 1, False, (1, 5))
 ])
-def test_get_reduced_shape(x, shape, shift, length_only, expected):
-    output = get_reduced_shape(x, shape, shift=shift, length_only=length_only)
+def test_get_reduced_shape(x, shape, shift, size_only, expected):
+    output = get_reduced_shape(x, shape, shift=shift, size_only=size_only)
     assert output == expected
 
 @pytest.mark.parametrize('i,shape,expected', [

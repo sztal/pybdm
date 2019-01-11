@@ -2,8 +2,8 @@
 # pylint: disable=W0621
 import os
 import pytest
-import numpy as np
 from pytest import approx
+import numpy as np
 from joblib import Parallel, delayed
 from bdm.encoding import array_from_string
 from bdm.utils import slice_dataset

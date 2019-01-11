@@ -49,7 +49,7 @@ def test_partition_ignore(x, shape, expected):
 ])
 def test_partition_shrink(x, shape, min_length, expected):
     bdm = BDMRecursive(ndim=len(shape), shape=shape, min_length=min_length)
-    output = [ p for p in bdm.partition(x, shape=shape, min_length=min_length) ]
+    output = [ p for p in bdm.partition(x, shape=shape) ]
     assert len(output) == len(expected)
     assert all([ np.array_equal(o, e) for o, e in zip(output, expected) ])
 
