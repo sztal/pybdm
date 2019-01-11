@@ -165,7 +165,7 @@ def slice_dataset(X, shape, shift=0):
            [1, 1, 1]])]
     """
     if len(shape) != X.ndim:
-        raise ArithmeticError(
+        raise AttributeError(
             "dataset and slice shape does not have the same number of axes"
         )
     r_shape = get_reduced_shape(X, shape, shift=shift, size_only=False)

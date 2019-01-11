@@ -27,22 +27,23 @@ class PerturbationExperiment:
     metric : {'bdm', 'entropy'}
         Which metric to use for perturbing.
     """
-    def __init__(self, X, bdm, metric='bdm'):
+    def __init__(self, bdm, X=None, metric='bdm'):
         """Initialization method."""
-        self.X = X
         self.bdm = bdm
         self.metric = metric
-        self._counter = bdm.count_and_lookup(X)
+        self._counter = None
+        self._value = None
         self._ncounts = None
         if self.metric == 'bdm':
-            self._value = self.bdm.compute_bdm(self._counter)
             self._method = self._update_bdm
         elif self.metric == 'entropy':
-            self._value = self.bdm.compute_entropy(self._counter)
             self._method = self._update_entropy
-            self._ncounts = sum(self._counter.values())
         else:
             raise AttributeError("Incorrect metric, not one of: 'bdm', 'entropy'")
+        if X is None:
+            self.X = X
+        else:
+            self.set_data(X)
 
     @property
     def size(self):
@@ -58,6 +59,22 @@ class PerturbationExperiment:
     def ndim(self):
         """Data number of axes getter."""
         return self.X.ndim
+
+    def set_data(self, X):
+        """Set dataset.
+
+        Parameters
+        ----------
+        X : array_like
+            Dataset to perturb.
+        """
+        self.X = X
+        self._counter = self.bdm.count_and_lookup(X)
+        if self.metric == 'bdm':
+            self._value = self.bdm.compute_bdm(self._counter)
+        elif self.metric == 'entropy':
+            self._value = self.bdm.compute_entropy(self._counter)
+            self._ncounts = sum(self._counter.values())
 
     def _idx_to_parts(self, idx):
         def _slice(i, k):
@@ -158,7 +175,7 @@ class PerturbationExperiment:
         >>> from bdm import BDM
         >>> bdm = BDM(ndim=1)
         >>> X = np.ones((30, ), dtype=int)
-        >>> perturbation = PerturbationExperiment(X, bdm)
+        >>> perturbation = PerturbationExperiment(bdm, X)
         >>> perturbation.perturb((10, ), -1) # doctest: +FLOAT_CMP
         26.91763012739709
         """
@@ -175,17 +192,21 @@ class PerturbationExperiment:
             return 0
         return self._method(idx, old_value, value, keep_changes)
 
-    def run(self, changes, keep_changes=False):
+    def run(self, idx=None, values=None, keep_changes=False):
         """Run perturbation experiment.
 
         Parameters
         ----------
-        changes : array_like or None
-            Integer *Numpy* array.
-            First ``k`` columns must provide indices of elements
-            to change and the last column new element values
-            for :py:meth:`bdm.algorithms.PerturbationExperiment.perturb`.
-            If ``None`` then all elements are perturbed.
+        idx : array_like or None
+            *Numpy* integer array providing indexes (in rows) of elements
+            to perturb. If ``None`` then all elements are perturbed.
+        values : array_like or None
+            Value to assign during perturbation.
+            Negative values correspond to changing value to other
+            randomly selected symbols from the alphabet.
+            If ``None`` then all values are assigned this way.
+            If set then its dimensions must agree with the dimensions
+            of ``idx`` (they are horizontally stacked).
         keep_changes : bool
             If ``True`` then changes in the dataset are persistent,
             so each perturbation step depends on the previous ones.
@@ -200,16 +221,18 @@ class PerturbationExperiment:
         >>> from bdm import BDM
         >>> bdm = BDM(ndim=1)
         >>> X = np.ones((30, ), dtype=int)
-        >>> perturbation = PerturbationExperiment(X, bdm)
-        >>> changes = np.array([[10, -1], [20, -1]])
+        >>> perturbation = PerturbationExperiment(bdm, X)
+        >>> changes = np.array([10, 20])
         >>> perturbation.run(changes) # doctest: +FLOAT_CMP
         array([26.91763013, 27.34823681])
         """
-        if changes is None:
+        if idx is None:
             indexes = [ range(k) for k in self.X.shape ]
-            changes = np.array([ x for x in product(*indexes, (-1, )) ])
+            idx = np.array([ x for x in product(*indexes) ], dtype=int)
+        if values is None:
+            values = np.full((idx.shape[0], ), -1, dtype=int)
         return np.apply_along_axis(
             lambda r: self.perturb(tuple(r[:-1]), r[-1], keep_changes=keep_changes),
             axis=1,
-            arr=changes
+            arr=np.column_stack((idx, values))
         )
