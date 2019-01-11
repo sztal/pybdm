@@ -125,7 +125,7 @@ class PerturbationExperiment:
             self._value = new_ent
         return new_ent - old_ent
 
-    def perturb(self, idx, value=None, keep_changes=False):
+    def perturb(self, idx, value=-1, keep_changes=False):
         """Perturb element of the dataset.
 
         Parameters
@@ -134,7 +134,7 @@ class PerturbationExperiment:
             Index tuple of an element.
         value : int or callable or None
             Value to assign.
-            If ``None`` then new value is randomly selected from the set
+            If negative then new value is randomly selected from the set
             of other possible values.
             For binary data this is just a bit flip and no random numbers
             generation is involved in the process.
@@ -148,7 +148,7 @@ class PerturbationExperiment:
             BDM value change.
         """
         old_value = self.X[idx]
-        if value is None:
+        if value < 0:
             if self.bdm.n_symbols <= 2:
                 value = 1 if old_value == 0 else 0
             else:
@@ -159,3 +159,23 @@ class PerturbationExperiment:
         if old_value == value:
             return 0
         return self._method(idx, old_value, value, keep_changes)
+
+    def run(self, changes, keep_changes=False):
+        """Run perturbation experiment.
+
+        Parameters
+        ----------
+        changes : array_like
+            Integer *Numpy* array.
+            First ``k`` columns must provide indices of elements
+            to change and the last column new element values
+            for :py:meth:`bdm.algorithms.PerturbationExperiment.perturb`.
+        keep_changes : bool
+            If ``True`` then changes in the dataset are persistent,
+            so each perturbation step depends on the previous ones.
+        """
+        return np.apply_along_axis(
+            lambda r: self.perturb(tuple(r[:-1]), r[-1], keep_changes=keep_changes),
+            axis=1,
+            arr=changes
+        )
