@@ -17,16 +17,12 @@ class PerturbationExperiment:
         BDM object.
     counter : Counter
         Counter of BDM slices.
-    **kwds :
-        Keyword arguments passed to
-        :py:meth:`bdm.base.BDMBase.count_and_lookup`
-        if `counter` is ``None``.
     """
-    def __init__(self, X, bdm, counter=None, **kwds):
+    def __init__(self, X, bdm, counter=None):
         """Initialization method."""
         self.X = X
         self.bdm = bdm
-        self.counter = counter if counter else bdm.count_and_lookup(X, **kwds)
+        self.counter = counter if counter else bdm.count_and_lookup(X)
         self._r_shape = \
             get_reduced_shape(X, bdm.shape, shift=bdm.shift, size_only=False)
 

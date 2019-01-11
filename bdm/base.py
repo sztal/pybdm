@@ -121,6 +121,9 @@ class BDMBase:
         shape : tuple
             Dataset parts' shape.
             Use `shape` defined on the object if ``None``.
+            This argument should not be usually used.
+            It is meant to be used only in implementations
+            of specialized recursive partition algorithms.
 
         Yields
         ------
@@ -210,7 +213,7 @@ class BDMBase:
         counter = Counter(ctms)
         return counter
 
-    def count_and_lookup(self, X, **kwds):
+    def count_and_lookup(self, X):
         """Count parts and assign complexity values.
 
         Parameters
@@ -218,8 +221,6 @@ class BDMBase:
         X : array_like
             Dataset representation as a :py:class:`numpy.ndarray`.
             Number of axes must agree with the `ndim` attribute.
-        kwds :
-            Optional keyword arguments passed to the partition method.
 
         Returns
         -------
@@ -234,7 +235,7 @@ class BDMBase:
         >>> bdm.count_and_lookup(np.ones((12, ), dtype=int)) # doctest: +FLOAT_CMP
         Counter({('111111111111', 25.610413747641715): 1})
         """
-        parts = self.partition(X, **kwds)
+        parts = self.partition(X)
         ctms = self.lookup(parts)
         counter = self.aggregate(ctms)
         return counter
@@ -413,7 +414,7 @@ class BDMRecursive(BDMBase):
         super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname)
         self.min_length = min_length
 
-    def partition(self, X, shape=None, min_length=None):
+    def partition(self, X, shape=None):
         """Partition algorithm with a shrinking parts' size.
 
         See Also
@@ -428,14 +429,12 @@ class BDMRecursive(BDMBase):
         """
         if not shape:
             shape = self.shape
-        if min_length is None:
-            min_length = self.min_length
         for part in super().partition(X, shape=shape):
             if part.shape == shape:
                 yield part
             else:
                 min_dim_length = min(part.shape)
-                if min_dim_length < min_length:
+                if min_dim_length < self.min_length:
                     continue
                 shrinked_shape = tuple(min_dim_length for _ in range(len(shape)))
                 yield from super().partition(part, shape=shrinked_shape)
