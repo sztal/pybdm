@@ -68,6 +68,7 @@ class PerturbationExperiment:
         yield from self.bdm.partition(self.X[idx])
 
     def _update_bdm(self, idx, old_value, new_value, keep_changes):
+        import pdb; pdb.set_trace()
         old_bdm = self._value
         new_bdm = self._value
         for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):
@@ -82,9 +83,9 @@ class PerturbationExperiment:
                     del self._counter[(key, cmx)]
         self.X[idx] = new_value
         for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):
-            n = self._counter[(key, cmx)]
-            if n > 1:
-                new_bdm += np.log2(n / (n-1))
+            n = self._counter.get((key, cmx), 0)
+            if n > 0:
+                new_bdm += np.log2((n+1) / n)
             else:
                 new_bdm += cmx
             if keep_changes:
@@ -111,7 +112,7 @@ class PerturbationExperiment:
                 del self._counter[(key, cmx)]
         self.X[idx] = new_value
         for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):
-            n = self._counter[(key, cmx)]
+            n = self._counter.get((key, cmx), 0) + 1
             p = n / self._ncounts
             new_ent -= p*np.log2(p)
             if n > 1:
