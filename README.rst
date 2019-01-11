@@ -37,7 +37,7 @@ Development version installation::
 
     pip install git+https://github.com/sztal/pybdm.git
 
-Standard installation::
+Standard installation (not yet on *PyPI*)::
 
     pip install bdm
 
