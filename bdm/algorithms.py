@@ -146,6 +146,15 @@ class PerturbationExperiment:
         -------
         float :
             BDM value change.
+
+        Examples
+        --------
+        >>> from bdm import BDM
+        >>> bdm = BDM(ndim=1)
+        >>> X = np.ones((30, ), dtype=int)
+        >>> perturbation = PerturbationExperiment(X, bdm)
+        >>> perturbation.perturb((10, ), -1) # doctest: +FLOAT_CMP
+        26.91763012739709
         """
         old_value = self.X[idx]
         if value < 0:
@@ -173,6 +182,21 @@ class PerturbationExperiment:
         keep_changes : bool
             If ``True`` then changes in the dataset are persistent,
             so each perturbation step depends on the previous ones.
+
+        Returns
+        -------
+        array_like
+            1D float array with perturbation values.
+
+        Examples
+        --------
+        >>> from bdm import BDM
+        >>> bdm = BDM(ndim=1)
+        >>> X = np.ones((30, ), dtype=int)
+        >>> perturbation = PerturbationExperiment(X, bdm)
+        >>> changes = np.array([[10, -1], [20, -1]])
+        >>> perturbation.run(changes) # doctest: +FLOAT_CMP
+        array([26.91763013, 27.34823681])
         """
         return np.apply_along_axis(
             lambda r: self.perturb(tuple(r[:-1]), r[-1], keep_changes=keep_changes),
