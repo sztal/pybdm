@@ -2,14 +2,21 @@
 from itertools import product
 import numpy as np
 from numpy.random import choice
-from bdm.utils import get_reduced_shape
 
 
 class PerturbationExperiment:
     """Perturbation experiment class.
 
-    Perturbation experiment studies change of BDM under changes
-    applied to the underlying dataset.
+    Perturbation experiment studies change of BDM / entropy under changes
+    applied to the underlying dataset. This is the main tool for detecting
+    parts of a system having some causal significance as opposed
+    to noise parts.
+
+    Parts which after yield negative contribution to the overall
+    complexity after change are likely to be important for the system,
+    since their removal make it more noisy. On the other hand parts that yield
+    positive contribution to the overall complexity after change are likely
+    to be noise since they extend the system's description length.
 
     Attributes
     ----------
@@ -36,8 +43,6 @@ class PerturbationExperiment:
             self._ncounts = sum(self._counter.values())
         else:
             raise AttributeError("Incorrect metric, not one of: 'bdm', 'entropy'")
-        self._r_shape = \
-            get_reduced_shape(X, bdm.shape, shift=bdm.shift, size_only=False)
 
     @property
     def size(self):
