@@ -48,6 +48,13 @@ Usage
 The BDM is implemented using the object-oriented approach and expects
 input represented as `Numpy <http://www.numpy.org/>`__ arrays of integer type.
 
+.. highlights::
+
+   ``BDM`` objects operate exclusively on **integer arrays**.
+   Hence, any alphabet must be first mapped to a set of integers ranging
+   from ``0`` to ``k``.
+
+
 Binary sequences (1D)
 ---------------------
 
@@ -56,7 +63,7 @@ Binary sequences (1D)
     import numpy as np
     from bdm import BDM
 
-    # Create a dataset
+    # Create a dataset (must be of integer type)
     X = np.ones((100,), dtype=int)
 
     # Initialize BDM object
@@ -66,6 +73,10 @@ Binary sequences (1D)
     # Compute BDM
     bdm.bdm(X)
 
+    # BDM objects may also compute standard Shannon entropy in base 2
+    bdm.entropy(X)
+
+
 Binary matrices (2D)
 --------------------
 
@@ -74,7 +85,7 @@ Binary matrices (2D)
     import numpy as np
     from bdm import BDM
 
-    # Create a dataset
+    # Create a dataset (must be of integer type)
     X = np.ones((100, 100), dtype=int)
 
     # Initialize BDM object
@@ -82,6 +93,10 @@ Binary matrices (2D)
 
     # Compute BDM
     bdm.bdm(X)
+
+    # BDM objects may also compute standard Shannon entropy in base 2
+    bdm.entropy(X)
+
 
 Parallel processing
 -------------------
@@ -103,7 +118,7 @@ into a single BDM approximation of the algorithmic complexity of the dataset.
     from bdm import BDM
     from bdm.utils import slice_dataset
 
-    # Create a dataset
+    # Create a dataset (must be of integer type)
     X = np.ones((1000, 1000), dtype=int)
 
     # Initialize BDM object
@@ -115,6 +130,52 @@ into a single BDM approximation of the algorithmic complexity of the dataset.
 
     # Compute BDM
     bdm.compute_bdm(*counters)
+
+
+Perturbation analysis
+---------------------
+
+Besides the main *Block Decomposition Method* implementation *PyBDM* provides
+also an efficient algorithm for perturbation analysis based on *BDM*
+(or standard Shannon entropy).
+
+A perturbation experiment studies change of *BDM* / entropy under changes
+applied to the underlying dataset. This is the main tool for detecting
+parts of a system having some causal significance as opposed
+to noise parts.
+
+Parts which after yield negative contribution to the overall
+complexity after change are likely to be important for the system,
+since their removal make it more noisy. On the other hand parts that yield
+positive contribution to the overall complexity after change are likely
+to be noise since they extend the system's description length.
+
+.. code-block:: python
+
+    import numpy as np
+    from bdm import BDM
+    from bdm.algorithms import PerturbationExperiment
+
+    # Create a dataset (must be of integer type)
+    X = np.ones((100, 100), dtype=int)
+
+    # Initialize BDM object
+    BDM = bdm(ndim=2)
+
+    # Initialize perturbation experiment object
+    # (may be run for both bdm or entropy)
+    perturbation = PerturbationExperiment(X, bdm, metric='bdm')
+
+    # Compute BDM change for all data points
+    delta_bdm = perturbation.run(changes=None)
+
+    # Compute BDM change for selected data points and keep the changes while running
+    # The last column in the changes array specifies the new value to apply.
+    # If the new value is negative, then it is selected randomly
+    # from the rest of alhpabet (the existing value is overwritten with some other value).
+    # The first columsn specify indices of elements to perturb.
+    changes = np.array([[0, 0, -1], [10, 10, -1]])
+    delta_bdm = perturbation.run(changes=changes, keep_changes=True)
 
 
 Authors & Contact
