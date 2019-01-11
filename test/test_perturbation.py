@@ -1,5 +1,6 @@
 """Tests for the `algorithms` module."""
 # pylint: disable=W0212,W0621
+# pylint: disable=R0914
 import pytest
 from pytest import approx
 import numpy as np
@@ -32,6 +33,32 @@ def perturbation_d1_overlap():
     X = np.random.randint(0, 2, (100, ), dtype=int)
     bdm = BDMBase(ndim=1, shift=1)
     return PerturbationExperiment(X, bdm)
+
+@pytest.fixture(scope='function')
+def perturbation_ent(bdm_d2):
+    np.random.seed(1001)
+    X = np.random.randint(0, 2, (25, 25), dtype=int)
+    return PerturbationExperiment(X, bdm_d2, metric='entropy')
+
+@pytest.fixture(scope='function')
+def perturbation_ent_overlap():
+    np.random.seed(1001)
+    X = np.random.randint(0, 2, (25, 25), dtype=int)
+    bdm = BDMBase(ndim=2, shift=1)
+    return PerturbationExperiment(X, bdm, metric='entropy')
+
+@pytest.fixture(scope='function')
+def perturbation_d1_ent(bdm_d1):
+    np.random.seed(999)
+    X = np.random.randint(0, 2, (100, ), dtype=int)
+    return PerturbationExperiment(X, bdm_d1, metric='entropy')
+
+@pytest.fixture(scope='function')
+def perturbation_d1_ent_overlap():
+    np.random.seed(99)
+    X = np.random.randint(0, 2, (100, ), dtype=int)
+    bdm = BDMBase(ndim=1, shift=1)
+    return PerturbationExperiment(X, bdm, metric='entropy')
 
 
 class TestPerturbationExperiment:
@@ -72,78 +99,95 @@ class TestPerturbationExperiment:
         for o, e in zip(output, expected):
             assert np.array_equal(o, e)
 
-    @pytest.mark.parametrize('idx', [(0, 0), (1, 0), (10, 15), (24, 24)])
-    @pytest.mark.parametrize('value', [1, 0, None])
-    @pytest.mark.parametrize('keep_changes', [True, False])
-    def test_perturb(self, perturbation, idx, value, keep_changes):
+    def _assert_perturb(self, perturbation, idx, value, keep_changes, metric='bdm'):
         X0 = perturbation.X.copy()
         X1 = X0.copy()
+        C0 = perturbation._counter.copy()
         if value is not None:
             X1[idx] = value
         else:
             X1[idx] = 0 if X0[idx] == 1 else 1
-        bdm0 = perturbation.bdm.bdm(X0)
-        bdm1 = perturbation.bdm.bdm(X1)
-        expected = bdm1 - bdm0
+        C1 = perturbation.bdm.count_and_lookup(X1)
+        if metric == 'bdm':
+            x0 = perturbation.bdm.bdm(X0)
+            x1 = perturbation.bdm.bdm(X1)
+        else:
+            x0 = perturbation.bdm.entropy(X0)
+            x1 = perturbation.bdm.entropy(X1)
+        expected = x1 - x0
         output = perturbation.perturb(idx, value=value, keep_changes=keep_changes)
         assert output == approx(expected)
-        if not keep_changes:
+        if keep_changes and abs(expected) > 0:
+            assert (X0 != X1).sum() == 1
+            assert X0[idx] != X1[idx]
+            assert perturbation._counter == C1
+            assert perturbation._counter != C0
+        elif not keep_changes:
             assert np.array_equal(X0, perturbation.X)
+            assert perturbation._counter == C0
+
+    @pytest.mark.parametrize('idx', [(0, 0), (1, 0), (10, 15), (24, 24)])
+    @pytest.mark.parametrize('value', [1, 0, None])
+    @pytest.mark.parametrize('keep_changes', [True, False])
+    def test_perturb(self, perturbation, idx, value, keep_changes):
+        self._assert_perturb(
+            perturbation, idx, value, keep_changes, metric='bdm'
+        )
 
     @pytest.mark.parametrize('idx', [(0, 0), (1, 0), (10, 15), (24, 24)])
     @pytest.mark.parametrize('value', [1, 0, None])
     @pytest.mark.parametrize('keep_changes', [True, False])
     def test_perturb_overlap(self, perturbation_overlap, idx, value, keep_changes):
-        perturbation = perturbation_overlap
-        X0 = perturbation.X.copy()
-        X1 = X0.copy()
-        if value is not None:
-            X1[idx] = value
-        else:
-            X1[idx] = 0 if X0[idx] == 1 else 1
-        bdm0 = perturbation.bdm.bdm(X0)
-        bdm1 = perturbation.bdm.bdm(X1)
-        expected = bdm1 - bdm0
-        output = perturbation.perturb(idx, value=value, keep_changes=keep_changes)
-        assert output == approx(expected)
-        if not keep_changes:
-            assert np.array_equal(X0, perturbation.X)
+        self._assert_perturb(
+            perturbation_overlap, idx, value, keep_changes, metric='bdm'
+        )
 
     @pytest.mark.parametrize('idx', [(0, ), (1, ), (55, ), (99, )])
     @pytest.mark.parametrize('value', [1, 0, None])
     @pytest.mark.parametrize('keep_changes', [True, False])
     def test_perturb_d1(self, perturbation_d1, idx, value, keep_changes):
-        perturbation = perturbation_d1
-        X0 = perturbation.X.copy()
-        X1 = X0.copy()
-        if value is not None:
-            X1[idx] = value
-        else:
-            X1[idx] = 0 if X0[idx] == 1 else 1
-        bdm0 = perturbation.bdm.bdm(X0)
-        bdm1 = perturbation.bdm.bdm(X1)
-        expected = bdm1 - bdm0
-        output = perturbation.perturb(idx, value=value, keep_changes=keep_changes)
-        assert output == approx(expected)
-        if not keep_changes:
-            assert np.array_equal(X0, perturbation.X)
+        self._assert_perturb(
+            perturbation_d1, idx, value, keep_changes, metric='bdm'
+        )
 
-    # @pytest.mark.parametrize('idx', [(0, ), (1, ), (55, ), (99, )])
-    @pytest.mark.parametrize('idx', [(0, )])
+    @pytest.mark.parametrize('idx', [(0, ), (1, ), (55, ), (99, )])
     @pytest.mark.parametrize('value', [1, 0, None])
     @pytest.mark.parametrize('keep_changes', [True, False])
     def test_perturb_d1_overlap(self, perturbation_d1_overlap, idx, value, keep_changes):
-        perturbation = perturbation_d1_overlap
-        X0 = perturbation.X.copy()
-        X1 = X0.copy()
-        if value is not None:
-            X1[idx] = value
-        else:
-            X1[idx] = 0 if X0[idx] == 1 else 1
-        bdm0 = perturbation.bdm.bdm(X0)
-        bdm1 = perturbation.bdm.bdm(X1)
-        expected = bdm1 - bdm0
-        output = perturbation.perturb(idx, value=value, keep_changes=keep_changes)
-        assert output == approx(expected)
-        if not keep_changes:
-            assert np.array_equal(X0, perturbation.X)
+        self._assert_perturb(
+            perturbation_d1_overlap, idx, value, keep_changes, metric='bdm'
+        )
+
+    @pytest.mark.parametrize('idx', [(0, 0), (1, 0), (10, 15), (24, 24)])
+    @pytest.mark.parametrize('value', [1, 0, None])
+    @pytest.mark.parametrize('keep_changes', [True, False])
+    def test_perturb_ent(self, perturbation_ent, idx, value, keep_changes):
+        self._assert_perturb(
+            perturbation_ent, idx, value, keep_changes, metric='entropy'
+        )
+
+    @pytest.mark.parametrize('idx', [(0, 0), (1, 0), (10, 15), (24, 24)])
+    @pytest.mark.parametrize('value', [1, 0, None])
+    @pytest.mark.parametrize('keep_changes', [True, False])
+    def test_perturb_ent_overlap(self, perturbation_ent_overlap, idx,
+                                 value, keep_changes):
+        self._assert_perturb(
+            perturbation_ent_overlap, idx, value, keep_changes, metric='entropy'
+        )
+
+    @pytest.mark.parametrize('idx', [(0, ), (1, ), (55, ), (99, )])
+    @pytest.mark.parametrize('value', [1, 0, None])
+    @pytest.mark.parametrize('keep_changes', [True, False])
+    def test_perturb_d1_ent(self, perturbation_d1_ent, idx, value, keep_changes):
+        self._assert_perturb(
+            perturbation_d1_ent, idx, value, keep_changes, metric='entropy'
+        )
+
+    @pytest.mark.parametrize('idx', [(0, ), (1, ), (55, ), (99, )])
+    @pytest.mark.parametrize('value', [1, 0, None])
+    @pytest.mark.parametrize('keep_changes', [True, False])
+    def test_perturb_d1_ent_overlap(self, perturbation_d1_ent_overlap, idx,
+                                    value, keep_changes):
+        self._assert_perturb(
+            perturbation_d1_ent_overlap, idx, value, keep_changes, metric='entropy'
+        )

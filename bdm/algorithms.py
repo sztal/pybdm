@@ -68,7 +68,6 @@ class PerturbationExperiment:
         yield from self.bdm.partition(self.X[idx])
 
     def _update_bdm(self, idx, old_value, new_value, keep_changes):
-        import pdb; pdb.set_trace()
         old_bdm = self._value
         new_bdm = self._value
         for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):
