@@ -168,7 +168,7 @@ def slice_dataset(X, shape, shift=0):
         raise ArithmeticError(
             "dataset and slice shape does not have the same number of axes"
         )
-    r_shape = get_reduced_shape(X, shape, size_only=False)
+    r_shape = get_reduced_shape(X, shape, shift=shift, size_only=False)
     n_parts = int(np.multiply.reduce(r_shape))
     width = shape[0]
     slice_shift = shift if shift > 0 else width

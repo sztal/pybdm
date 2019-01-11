@@ -1,5 +1,4 @@
 """Core algorithms operating on ``BDM`` objects."""
-from itertools import product
 import numpy as np
 from numpy.random import choice
 from bdm.utils import get_reduced_shape
@@ -54,25 +53,24 @@ class PerturbationExperiment:
         """Data number of axes getter."""
         return self.X.ndim
 
-    def _idx_to_slices(self, idx):
+    def _idx_to_parts(self, idx):
         def _slice(i, k):
             start = i - i % k
             end = start + k
             return slice(start, end)
         shift = self.bdm.shift
-        if shift <= 0:
-            s = tuple(_slice(i, k) for i, k in zip(idx, self.bdm.shape))
-            yield s
-            return
-        idxs = tuple(range(max(i-k+1, 0), i+1) for i, k in zip(idx, self.bdm.shape))
-        for i in product(*idxs):
-            s = tuple(slice(m, m+n) for m, n in zip(i, self.bdm.shape))
-            yield s
+        shape = self.bdm.shape
+        if shift == 0:
+            r_idx = tuple((k // l)*l for k, l in zip(idx, shape))
+            idx = tuple(slice(k, k+l) for k, l in zip(r_idx, shape))
+        else:
+            idx = tuple(slice(max(0, k-l+1), k+l) for k, l in zip(idx, shape))
+        yield from self.bdm.partition(self.X[idx])
 
     def _update_bdm(self, idx, old_value, new_value, keep_changes):
         old_bdm = self._value
         new_bdm = self._value
-        for key, cmx in self.bdm.lookup(self._idx_to_slices(idx)):
+        for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):
             n = self._counter[(key, cmx)]
             if n > 1:
                 new_bdm += np.log2((n-1) / n)
@@ -83,7 +81,7 @@ class PerturbationExperiment:
                 if keep_changes:
                     del self._counter[(key, cmx)]
         self.X[idx] = new_value
-        for key, cmx in self.bdm.lookup(self._idx_to_slices(idx)):
+        for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):
             n = self._counter[(key, cmx)]
             if n > 1:
                 new_bdm += np.log2(n / (n-1))
@@ -100,7 +98,7 @@ class PerturbationExperiment:
     def _update_entropy(self, idx, old_value, new_value, keep_changes):
         old_ent = self._value
         new_ent = self._value
-        for key, cmx in self.bdm.lookup(self._idx_to_slices(idx)):
+        for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):
             n = self._counter[(key, cmx)]
             p = n / self._ncounts
             new_ent += p*np.log2(p)
@@ -112,7 +110,7 @@ class PerturbationExperiment:
             elif keep_changes:
                 del self._counter[(key, cmx)]
         self.X[idx] = new_value
-        for key, cmx in self.bdm.lookup(self._idx_to_slices(idx)):
+        for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):
             n = self._counter[(key, cmx)]
             p = n / self._ncounts
             new_ent -= p*np.log2(p)
