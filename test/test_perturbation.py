@@ -61,6 +61,7 @@ def perturbation_d1_ent_overlap():
     return PerturbationExperiment(X, bdm, metric='entropy')
 
 
+@pytest.mark.slow
 class TestPerturbationExperiment:
 
     @pytest.mark.parametrize('idx,expected', [
@@ -194,53 +195,64 @@ class TestPerturbationExperiment:
 
     def _assert_run(self, perturbation, changes, keep_changes):
         X0 = perturbation.X.copy()
-        delta = perturbation.run(changes, keep_changes=keep_changes)
-        assert delta.shape[0] == changes.shape[0]
+        output = perturbation.run(changes, keep_changes=keep_changes)
+        if changes is None:
+            N_changes = np.multiply.reduce(X0.shape)
+        else:
+            N_changes = changes.shape[0]
+        assert output.shape[0] == N_changes
         if keep_changes:
-            assert (X0 != perturbation.X).sum() == changes.shape[0]
-            for row in changes:
-                idx = tuple(row[:-1])
-                assert X0[idx] != perturbation.X[idx]
+            assert (X0 != perturbation.X).sum() == N_changes
+            if changes is not None:
+                for row in changes:
+                    idx = tuple(row[:-1])
+                    assert X0[idx] != perturbation.X[idx]
         else:
             assert np.array_equal(X0, perturbation.X)
 
     @pytest.mark.parametrize('changes', [
-        (np.array([[0, 0, -1], [0, 5, -1], [10, 15, -1]])),
+        np.array([[0, 0, -1], [0, 5, -1], [10, 15, -1]]),
+        None
     ])
     @pytest.mark.parametrize('keep_changes', [True, False])
     def test_run(self, perturbation, changes, keep_changes):
         self._assert_run(perturbation, changes, keep_changes)
 
     @pytest.mark.parametrize('changes', [
-        (np.array([[0, 0, -1], [0, 5, -1], [10, 15, -1]])),
+        np.array([[0, 0, -1], [0, 5, -1], [10, 15, -1]]),
+        None
     ])
     @pytest.mark.parametrize('keep_changes', [True, False])
     def test_run_overlap(self, perturbation_overlap, changes, keep_changes):
         self._assert_run(perturbation_overlap, changes, keep_changes)
 
     @pytest.mark.parametrize('changes', [
-        (np.array([[0, -1], [5, -1], [15, -1]])),
+        np.array([[0, -1], [5, -1], [15, -1]]),
+        None
     ])
     @pytest.mark.parametrize('keep_changes', [True, False])
     def test_run_d1(self, perturbation_d1, changes, keep_changes):
         self._assert_run(perturbation_d1, changes, keep_changes)
 
     @pytest.mark.parametrize('changes', [
-        (np.array([[0, -1], [5, -1], [15, -1]])),
+        np.array([[0, -1], [5, -1], [15, -1]]),
+        None
     ])
     @pytest.mark.parametrize('keep_changes', [True, False])
     def test_run_d1_overlap(self, perturbation_d1_overlap, changes, keep_changes):
         self._assert_run(perturbation_d1_overlap, changes, keep_changes)
 
     @pytest.mark.parametrize('changes', [
-        (np.array([[0, 0, -1], [0, 5, -1], [10, 15, -1]])),
+        np.array([[0, 0, -1], [0, 5, -1], [10, 15, -1]]),
+        None
     ])
     @pytest.mark.parametrize('keep_changes', [True, False])
     def test_run_ent(self, perturbation_ent, changes, keep_changes):
         self._assert_run(perturbation_ent, changes, keep_changes)
 
     @pytest.mark.parametrize('changes', [
-        (np.array([[0, 0, -1], [0, 5, -1], [10, 15, -1]])),
+        np.array([[0, 0, -1], [0, 5, -1], [10, 15, -1]]),
+        None
     ])
     @pytest.mark.parametrize('keep_changes', [True, False])
     def test_run_ent_overlap(self, perturbation_ent_overlap, changes, keep_changes):
@@ -248,6 +260,7 @@ class TestPerturbationExperiment:
 
     @pytest.mark.parametrize('changes', [
         (np.array([[0, -1], [5, -1], [15, -1]])),
+        None
     ])
     @pytest.mark.parametrize('keep_changes', [True, False])
     def test_run_ent_d1(self, perturbation_d1_ent, changes, keep_changes):
@@ -255,6 +268,7 @@ class TestPerturbationExperiment:
 
     @pytest.mark.parametrize('changes', [
         (np.array([[0, -1], [5, -1], [15, -1]])),
+        None
     ])
     @pytest.mark.parametrize('keep_changes', [True, False])
     def test_run_ent_d1_overlap(self, perturbation_d1_ent_overlap, changes, keep_changes):

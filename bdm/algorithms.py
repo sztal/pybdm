@@ -1,4 +1,5 @@
 """Core algorithms operating on ``BDM`` objects."""
+from itertools import product
 import numpy as np
 from numpy.random import choice
 from bdm.utils import get_reduced_shape
@@ -174,11 +175,12 @@ class PerturbationExperiment:
 
         Parameters
         ----------
-        changes : array_like
+        changes : array_like or None
             Integer *Numpy* array.
             First ``k`` columns must provide indices of elements
             to change and the last column new element values
             for :py:meth:`bdm.algorithms.PerturbationExperiment.perturb`.
+            If ``None`` then all elements are perturbed.
         keep_changes : bool
             If ``True`` then changes in the dataset are persistent,
             so each perturbation step depends on the previous ones.
@@ -198,6 +200,9 @@ class PerturbationExperiment:
         >>> perturbation.run(changes) # doctest: +FLOAT_CMP
         array([26.91763013, 27.34823681])
         """
+        if changes is None:
+            indexes = [ range(k) for k in self.X.shape ]
+            changes = np.array([ x for x in product(*indexes, (-1, )) ])
         return np.apply_along_axis(
             lambda r: self.perturb(tuple(r[:-1]), r[-1], keep_changes=keep_changes),
             axis=1,
