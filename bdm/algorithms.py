@@ -1,5 +1,6 @@
 """Core algorithms operating on ``BDM`` objects."""
 from itertools import product
+import numpy as np
 from numpy.random import choice
 from bdm.utils import get_reduced_shape
 
@@ -16,14 +17,25 @@ class PerturbationExperiment:
         Dataset for perturbation analysis.
     bdm : BDMBase
         BDM object.
-    counter : Counter
-        Counter of BDM slices.
+    metric : {'bdm', 'entropy'}
+        Which metric to use for perturbing.
     """
-    def __init__(self, X, bdm, counter=None):
+    def __init__(self, X, bdm, metric='bdm'):
         """Initialization method."""
         self.X = X
         self.bdm = bdm
-        self.counter = counter if counter else bdm.count_and_lookup(X)
+        self.metric = metric
+        self._counter = bdm.count_and_lookup(X)
+        self._ncounts = None
+        if self.metric == 'bdm':
+            self._value = self.bdm.compute_bdm(self._counter)
+            self._method = self._update_bdm
+        elif self.metric == 'entropy':
+            self._value = self.bdm.compute_entropy(self._counter)
+            self._method = self._update_entropy
+            self._ncounts = sum(self._counter.values())
+        else:
+            raise AttributeError("Incorrect metric, not one of: 'bdm', 'entropy'")
         self._r_shape = \
             get_reduced_shape(X, bdm.shape, shift=bdm.shift, size_only=False)
 
@@ -57,51 +69,95 @@ class PerturbationExperiment:
             s = tuple(slice(m, m+n) for m, n in zip(i, self.bdm.shape))
             yield s
 
-    def update(self, idx, value=None):
-        """Update element of the dataset.
-
-        Parameters
-        ----------
-        idx : tuple
-            Element index tuple.
-        value : int or None
-            Value to assign.
-            If ``None`` then new value is randomly selected from the set
-            of other possible values.
-            For binary data this is just a bit flip and no random numbers
-            generation is involved in the process.
-        """
-        if value is None:
-            if self.bdm.n_symbols <= 2:
-                v = self.X[idx]
-                self.X[idx] = 1 if v == 0 else 0
+    def _update_bdm(self, idx, old_value, new_value, keep_changes):
+        old_bdm = self._value
+        new_bdm = self._value
+        for key, cmx in self.bdm.lookup(self._idx_to_slices(idx)):
+            n = self._counter[(key, cmx)]
+            if n > 1:
+                new_bdm += np.log2((n-1) / n)
+                if keep_changes:
+                    self._counter[(key, cmx)] -= 1
             else:
-                v = self.X[idx]
-                self.X[idx] = choice([ x for x in range(self.n_symbols) if x != v ])
+                new_bdm -= cmx
+                if keep_changes:
+                    del self._counter[(key, cmx)]
+        self.X[idx] = new_value
+        for key, cmx in self.bdm.lookup(self._idx_to_slices(idx)):
+            n = self._counter[(key, cmx)]
+            if n > 1:
+                new_bdm += np.log2(n / (n-1))
+            else:
+                new_bdm += cmx
+            if keep_changes:
+                self._counter.update([(key, cmx)])
+        if not keep_changes:
+            self.X[idx] = old_value
         else:
-            self.X[idx] = value
+            self._value = new_bdm
+        return new_bdm - old_bdm
 
-    def perturb(self, idx, *args, dry_run=True):
+    def _update_entropy(self, idx, old_value, new_value, keep_changes):
+        old_ent = self._value
+        new_ent = self._value
+        for key, cmx in self.bdm.lookup(self._idx_to_slices(idx)):
+            n = self._counter[(key, cmx)]
+            p = n / self._ncounts
+            new_ent += p*np.log2(p)
+            if n > 1:
+                p = (n-1) / self._ncounts
+                new_ent -= p*np.log2(p)
+                if keep_changes:
+                    self._counter[(key, cmx)] -= 1
+            elif keep_changes:
+                del self._counter[(key, cmx)]
+        self.X[idx] = new_value
+        for key, cmx in self.bdm.lookup(self._idx_to_slices(idx)):
+            n = self._counter[(key, cmx)]
+            p = n / self._ncounts
+            new_ent -= p*np.log2(p)
+            if n > 1:
+                p = (n-1) / self._ncounts
+                new_ent += p*np.log2(p)
+            if keep_changes:
+                self._counter.update([(key, cmx)])
+        if not keep_changes:
+            self.X[idx] = old_value
+        else:
+            self._value = new_ent
+        return new_ent - old_ent
+
+    def perturb(self, idx, value=None, keep_changes=False):
         """Perturb element of the dataset.
 
         Parameters
         ----------
         idx : tuple
             Index tuple of an element.
-        updater : int or callable or None
-            Value to switch to.
-            If callable then it is called on the element's value
-            to determine the new value.
-            If ``None`` then the updater stored in the object attribute is used.
-        *args :
-            Positional arguments passed to
-            :py:meth:`PerturbationExperiment.update`.
-        dry_run : bool
-            If ``True`` then change is not persisted.
+        value : int or callable or None
+            Value to assign.
+            If ``None`` then new value is randomly selected from the set
+            of other possible values.
+            For binary data this is just a bit flip and no random numbers
+            generation is involved in the process.
+        keep_changes : bool
+            If ``True`` then changes in the dataset are persistent,
+            so each perturbation step depends on the previous ones.
 
         Returns
         -------
         float :
             BDM value change.
         """
-        pass
+        old_value = self.X[idx]
+        if value is None:
+            if self.bdm.n_symbols <= 2:
+                value = 1 if old_value == 0 else 0
+            else:
+                value = choice([
+                    x for x in range(self.bdm.n_symbols)
+                    if x != old_value
+                ])
+        if old_value == value:
+            return 0
+        return self._method(idx, old_value, value, keep_changes)

@@ -48,3 +48,9 @@ class TestPerturbationExperiment:
     def test_reduce_idx_recursive(self, perturbation_overlap, idx,  expected):
         output = [ x for x in perturbation_overlap._idx_to_slices(idx) ]
         assert output == expected
+
+    @pytest.mark.parametrize('idx,value,keep_changes,expected', [
+        ((0, 0), None, False, 0)
+    ])
+    def test_perturb(self, idx, value, keep_changes, expected):
+        pass
