@@ -77,15 +77,13 @@ class BDMBase:
         Shift value for the partition algorithm.
         If ``0`` then datasets are sliced into non-overlapping parts.
         If ``1`` then datasets are sliced into overlapping parts.
+    n_symbols : int
+        Number of symbols in the alphabet.
     shape : tuple
         Shape of slices.
     ctmname : str
         Name of the CTM dataset.
     """
-    _ndim_to_shape = {
-        1: (12, ),
-        2: (4, 4)
-    }
     _ndim_to_ctm = {
         1: 'CTM-B2-D12',
         2: 'CTM-B2-D4x4'
@@ -104,10 +102,15 @@ class BDMBase:
             raise AttributeError("'shift' supports only values of `0` and `1`")
         self.ndim = ndim
         self.shift = shift
-        self.shape = shape if shape else self._ndim_to_shape[ndim]
-        if not self.shape or any([ x != self.shape[0] for x in self.shape ]):
-            raise AttributeError("'shape' has to be equal in each dimension")
         self.ctmname = ctmname if ctmname else self._ndim_to_ctm[ndim]
+        _n_sym, _shape = self.ctmname.split('-')[-2:]
+        self.n_symbols = int(_n_sym[1:])
+        if shape is None:
+            self.shape = tuple(int(x) for x in _shape[1:].split('x'))
+        elif any([ x != shape[0] for x in shape ]):
+            raise AttributeError("'shape' has to be equal in each dimension")
+        else:
+            self.shape = shape
         self._ctm = get_ctm_dataset(self.ctmname)
         self._sep = '-'
 

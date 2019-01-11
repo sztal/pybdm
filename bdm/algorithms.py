@@ -1,5 +1,6 @@
 """Core algorithms operating on ``BDM`` objects."""
 from itertools import product
+from numpy.random import choice
 from bdm.utils import get_reduced_shape
 
 
@@ -65,11 +66,18 @@ class PerturbationExperiment:
             Element index tuple.
         value : int or None
             Value to assign.
-            If ``None`` then new valuu is a bit flip.
+            If ``None`` then new value is randomly selected from the set
+            of other possible values.
+            For binary data this is just a bit flip and no random numbers
+            generation is involved in the process.
         """
         if value is None:
-            v = self.X[idx]
-            self.X[idx] = 1 if v == 0 else 0
+            if self.bdm.n_symbols <= 2:
+                v = self.X[idx]
+                self.X[idx] = 1 if v == 0 else 0
+            else:
+                v = self.X[idx]
+                self.X[idx] = choice([ x for x in range(self.n_symbols) if x != v ])
         else:
             self.X[idx] = value
 
