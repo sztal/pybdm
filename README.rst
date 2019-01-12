@@ -164,18 +164,19 @@ to be noise since they extend the system's description length.
 
     # Initialize perturbation experiment object
     # (may be run for both bdm or entropy)
-    perturbation = PerturbationExperiment(X, bdm, metric='bdm')
+    perturbation = PerturbationExperiment(bdm, X, metric='bdm')
 
     # Compute BDM change for all data points
-    delta_bdm = perturbation.run(changes=None)
+    delta_bdm = perturbation.run()
 
     # Compute BDM change for selected data points and keep the changes while running
-    # The last column in the changes array specifies the new value to apply.
-    # If the new value is negative, then it is selected randomly
-    # from the rest of alhpabet (the existing value is overwritten with some other value).
-    # The first columsn specify indices of elements to perturb.
-    changes = np.array([[0, 0, -1], [10, 10, -1]])
-    delta_bdm = perturbation.run(changes=changes, keep_changes=True)
+    # One array provide indices of elements that are to be change.
+    idx = np.array([[0, 0], [10, 10]], dtype=int)
+    # Another array provide new values to assign.
+    # Negative values mean that new values will be selected
+    # randomly from the set of other possible values from the alphabet.
+    values = np.array([-1, -1], dtype=int)
+    delta_bdm = perturbation.run(idx, values, keep_changes=True)
 
 
 Authors & Contact
