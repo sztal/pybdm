@@ -74,7 +74,7 @@ Binary sequences (1D)
     bdm.bdm(X)
 
     # BDM objects may also compute standard Shannon entropy in base 2
-    bdm.entropy(X)
+    bdm.ent(X)
 
 
 Binary matrices (2D)
@@ -95,7 +95,7 @@ Binary matrices (2D)
     bdm.bdm(X)
 
     # BDM objects may also compute standard Shannon entropy in base 2
-    bdm.entropy(X)
+    bdm.ent(X)
 
 
 Parallel processing

@@ -24,7 +24,7 @@ class PerturbationExperiment:
         Dataset for perturbation analysis.
     bdm : BDMBase
         BDM object.
-    metric : {'bdm', 'entropy'}
+    metric : {'bdm', 'ent'}
         Which metric to use for perturbing.
     """
     def __init__(self, bdm, X=None, metric='bdm'):
@@ -36,10 +36,10 @@ class PerturbationExperiment:
         self._ncounts = None
         if self.metric == 'bdm':
             self._method = self._update_bdm
-        elif self.metric == 'entropy':
-            self._method = self._update_entropy
+        elif self.metric == 'ent':
+            self._method = self._update_ent
         else:
-            raise AttributeError("Incorrect metric, not one of: 'bdm', 'entropy'")
+            raise AttributeError("Incorrect metric, not one of: 'bdm', 'ent'")
         if X is None:
             self.X = X
         else:
@@ -72,8 +72,8 @@ class PerturbationExperiment:
         self._counter = self.bdm.count_and_lookup(X)
         if self.metric == 'bdm':
             self._value = self.bdm.compute_bdm(self._counter)
-        elif self.metric == 'entropy':
-            self._value = self.bdm.compute_entropy(self._counter)
+        elif self.metric == 'ent':
+            self._value = self.bdm.compute_ent(self._counter)
             self._ncounts = sum(self._counter.values())
 
     def _idx_to_parts(self, idx):
@@ -118,7 +118,7 @@ class PerturbationExperiment:
             self._value = new_bdm
         return new_bdm - old_bdm
 
-    def _update_entropy(self, idx, old_value, new_value, keep_changes):
+    def _update_ent(self, idx, old_value, new_value, keep_changes):
         old_ent = self._value
         new_ent = self._value
         for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):

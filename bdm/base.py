@@ -324,7 +324,7 @@ class BDMBase:
         Returns
         -------
         float
-            Approximate algorithmic complexity.
+            Normalized approximate algorithmic complexity.
 
         Raises
         ------
@@ -344,7 +344,7 @@ class BDMBase:
         bdm = self.bdm(X, raise_if_zero=raise_if_zero)
         return (bdm - min_bdm) / (max_bdm - min_bdm)
 
-    def compute_entropy(self, *counters):
+    def compute_ent(self, *counters):
         """Compute block entropy from counter.
 
         Parameters
@@ -363,7 +363,7 @@ class BDMBase:
         >>> bdm = BDMBase(ndim=1, shift=0)
         >>> c1 = Counter([('111111111111', 1.95207842085224e-08)])
         >>> c2 = Counter([('000000000000', 1.95207842085224e-08)])
-        >>> bdm.compute_entropy(c1, c2) # doctest: +FLOAT_CMP
+        >>> bdm.compute_ent(c1, c2) # doctest: +FLOAT_CMP
         1.0
         """
         counter = reduce(lambda x, y: x+y, counters)
@@ -374,7 +374,7 @@ class BDMBase:
             ent -= p*np.log2(p)
         return ent
 
-    def entropy(self, X):
+    def ent(self, X):
         """Block entropy of a dataset.
 
         Parameters
@@ -392,11 +392,37 @@ class BDMBase:
         --------
         >>> import numpy as np
         >>> bdm = BDMBase(ndim=2, shift=0)
-        >>> bdm.entropy(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
+        >>> bdm.ent(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         0.0
         """
         counter = self.count_and_lookup(X)
-        return self.compute_entropy(counter)
+        return self.compute_ent(counter)
+
+    def nent(self, X):
+        """Normalized block entropy of a dataset.
+
+        Parameters
+        ----------
+        X : array_like
+            Dataset representation as a :py:class:`numpy.ndarray`.
+            Number of axes must agree with the `ndim` attribute.
+
+        Returns
+        -------
+        float
+            Normalized block entropy in base 2.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> bdm = BDMBase(ndim=2, shift=0)
+        >>> bdm.nent(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
+        0.0
+        """
+        min_ent = self.ent(make_min_data(X.shape))
+        max_ent = self.ent(make_max_data(X.shape, self.shape, self._ctm))
+        ent = self.ent(X)
+        return (ent - min_ent) / (max_ent - min_ent)
 
 
 class BDMIgnore(BDMBase):
