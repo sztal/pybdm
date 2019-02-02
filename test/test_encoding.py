@@ -19,7 +19,7 @@ def test_array_from_string(x, shape, expected):
 
 @pytest.mark.parametrize('arr,expected', [
     (np.array([]), ''),
-    (np.array([[0,0,0,0], [1,0,0,0], [0,1,0,1]]), '0000-1000-0101')
+    (np.array([[0,0,0,0], [1,0,0,0], [0,1,0,1]]), '000010000101')
 ])
 def test_string_from_array(arr, expected):
     output = string_from_array(arr)

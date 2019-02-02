@@ -1,9 +1,11 @@
 """Utility functions."""
 import pickle
 from functools import lru_cache
+from itertools import cycle
 from pkg_resources import resource_stream
 import numpy as np
 from .ctmdata import CTM_DATASETS as _ctm_datasets, __name__ as _ctmdata_path
+from .encoding import array_from_string
 
 
 def get_reduced_shape(X, shape, shift=0, size_only=True):
@@ -72,10 +74,10 @@ def get_reduced_shape(X, shape, shift=0, size_only=True):
 
     Examples
     --------
-    >>> x = np.ones((5, 5))
-    >>> get_reduced_shape(x, (2, 2), size_only=False)
+    >>> X = np.ones((5, 5))
+    >>> get_reduced_shape(X, (2, 2), size_only=False)
     (3, 3)
-    >>> get_reduced_shape(x, (2, 2), size_only=True)
+    >>> get_reduced_shape(X, (2, 2), size_only=True)
     9
     """
     if len(set(shape)) != 1:
@@ -91,6 +93,38 @@ def get_reduced_shape(X, shape, shift=0, size_only=True):
     if size_only:
         return int(np.multiply.reduce(r_shape))
     return r_shape
+
+def get_reduced_shape_array(X, shape):
+    """Get reduced array with entries giving indices in the original array.
+
+    Parameters
+    ----------
+    X : array_like
+        Dataset of arbitrary dimensionality represented as a *Numpy* array.
+    shape : tuple
+        Shape of the dataset's parts. Has to be symmetric.
+    shift : int
+        Shift of the sliding window.
+        In general, if positive, should not be greater than ``1``.
+        Shift by partition shape if not positive.
+
+    Returns
+    -------
+    array_like
+        Array with entries giving indices in the original array.
+
+    Raises
+    ------
+    AttributeError
+        If parts' `shape` is not equal in each dimension.
+        If parts' `shape` and dataset's shape have different numbers of axes.
+    """
+    r_shape = get_reduced_shape(X, shape=shape, shift=0, size_only=False)
+    arr = np.empty(r_shape, dtype=object)
+    for idx in np.ndindex(*arr.shape):
+        orig_idx = tuple(slice(i*j, i*j+j) for i, j in zip(idx, shape))
+        arr[idx] = orig_idx
+    return arr
 
 def get_reduced_idx(i, shape):
     """Get index of a part in a reduced representation from a part's number.
@@ -216,3 +250,47 @@ def get_ctm_dataset(name):
         raise ValueError(f"There is no {name} CTM dataset")
     with resource_stream(_ctmdata_path, _ctm_datasets[name]) as stream:
         return pickle.load(stream)
+
+def make_min_data(shape):
+    """Make minimally complex array of given shape.
+
+    Parameters
+    ----------
+    shape : tuple
+        Shape tuple.
+
+    Returns
+    -------
+    array_like
+        Minimally complex array.
+    """
+    return np.zeros(shape, dtype=int)
+
+def make_max_data(shape, part_shape, ctmdata):
+    """Make maximally complex array of given shape.
+
+    Parameters
+    ----------
+    shape : tuple
+        Shape tuple.
+    part_shape : tuple
+        Dataset part shape tuple.
+    ctmdata : dict
+        CTM reference dataset.
+
+    Returns
+    -------
+    array_like
+        Maximally complex array.
+    """
+    X = np.zeros(shape, dtype=int)
+    parts = cycle(ctmdata[part_shape])
+    r_arr = get_reduced_shape_array(X, part_shape)
+    for idx, key in zip(r_arr.flat, parts):
+        part = array_from_string(key, part_shape)
+        try:
+            X[idx] = part
+        except ValueError:
+            part = part[tuple(slice(k) for k in X[idx].shape)]
+            X[idx] = part
+    return X

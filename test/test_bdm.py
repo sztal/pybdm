@@ -42,24 +42,56 @@ with open(os.path.join(_dirpath, 'ent-b2-d4x4-test-input.tsv'), 'r') as stream:
 
 class TestBDM:
 
-    @pytest.mark.parametrize('x,expected', bdm1_test_input)
-    def test_complexity_d1(self, bdm_d1, x, expected):
-        output = bdm_d1.bdm(x)
+    @pytest.mark.parametrize('X,expected', bdm1_test_input)
+    def test_bdm_d1(self, bdm_d1, X, expected):
+        output = bdm_d1.bdm(X)
         assert output == approx(expected)
 
-    @pytest.mark.parametrize('x,expected', bdm2_test_input)
-    def test_complexity_d2(self, bdm_d2, x, expected):
-        output = bdm_d2.bdm(x)
+    @pytest.mark.parametrize('X,expected', bdm2_test_input)
+    def test_bdm_d2(self, bdm_d2, X, expected):
+        output = bdm_d2.bdm(X)
         assert output == approx(expected)
 
-    @pytest.mark.parametrize('x,expected', ent1_test_input)
-    def test_entropy_d1(self, bdm_d1, x, expected):
-        output = bdm_d1.entropy(x)
+    @pytest.mark.parametrize('X,expected', ent1_test_input)
+    def test_ent_d1(self, bdm_d1, X, expected):
+        output = bdm_d1.ent(X)
         assert output == approx(expected)
 
-    @pytest.mark.parametrize('x,expected', ent2_test_input)
-    def test_entropy_d2(self, bdm_d2, x, expected):
-        output = bdm_d2.entropy(x)
+    @pytest.mark.parametrize('X,expected', ent2_test_input)
+    def test_ent_d2(self, bdm_d2, X, expected):
+        output = bdm_d2.ent(X)
+        assert output == approx(expected)
+
+    @pytest.mark.parametrize('X,expected', [
+        (np.ones((30,), dtype=int), 0),
+        (np.array([0,1,0,0,0,1,1,0,0,0,1,0,0,0,1], dtype=int), 0.648665654727082)
+    ])
+    def test_nbdm_d1(self, bdm_d1, X, expected):
+        output = bdm_d1.nbdm(X)
+        assert output == approx(expected)
+
+    @pytest.mark.parametrize('X,expected', [
+        (np.ones((20, 20), dtype=int), 0),
+        (np.array([[0,0,1,0],[1,0,0,1],[0,0,1,1],[1,0,1,0]], dtype=int), 0.6139131118181638)
+    ])
+    def test_nbdm_d2(self, bdm_d2, X, expected):
+        output = bdm_d2.nbdm(X)
+        assert output == approx(expected)
+
+    @pytest.mark.parametrize('X,expected', [
+        (np.ones((30,), dtype=int), 0),
+        (np.array([0 for i in range(12)]+[1 for i in range(12)], dtype=int), 1)
+    ])
+    def test_nent_d1(self, bdm_d1, X, expected):
+        output = bdm_d1.nent(X)
+        assert output == approx(expected)
+
+    @pytest.mark.parametrize('X,expected', [
+        (np.ones((20, 20), dtype=int), 0),
+        (np.vstack((np.ones((4, 4), dtype=int), np.zeros((4, 4), dtype=int))), 1)
+    ])
+    def test_nent_d2(self, bdm_d2, X, expected):
+        output = bdm_d2.nent(X)
         assert output == approx(expected)
 
     @pytest.mark.slow
