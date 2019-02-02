@@ -16,6 +16,7 @@ from collections import Counter
 from functools import reduce
 import numpy as np
 from .utils import get_ctm_dataset, slice_dataset
+from .utils import make_min_data, make_max_data
 from .encoding import string_from_array
 
 
@@ -184,11 +185,12 @@ class BDMBase:
         [('111111111111', 25.610413747641715)]
         """
         for part in parts:
+            sh = part.shape
             key = string_from_array(part)
             try:
-                cmx = self._ctm[key]
+                cmx = self._ctm[sh][key]
             except KeyError:
-                raise KeyError(f"CTM dataset does not contain object '{key}'")
+                raise KeyError(f"CTM dataset does not contain object '{key}' of shape {sh}")
             yield key, cmx
 
     def aggregate(self, ctms):
@@ -306,6 +308,41 @@ class BDMBase:
         if raise_if_zero and cmx == 0:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
         return cmx
+
+    def nbdm(self, X, raise_if_zero=True):
+        """Normalized BDM.
+
+        Parameters
+        ----------
+        X : array_like
+            Dataset representation as a :py:class:`numpy.ndarray`.
+            Number of axes must agree with the `ndim` attribute.
+        raise_if_zero: bool
+            Should error be raised if BDM value is zero.
+            Zero value indicates that a dataset could have incorrect dimensions.
+
+        Returns
+        -------
+        float
+            Approximate algorithmic complexity.
+
+        Raises
+        ------
+        ValueError
+            If computed BDM value is 0 and `raise_if_zero` is ``True``.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> bdm = BDMBase(ndim=2, shift=0)
+        >>> bdm.nbdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
+        0.0
+        """
+        min_bdm = self.bdm(make_min_data(X.shape), raise_if_zero=raise_if_zero)
+        max_bdm = self.bdm(make_max_data(X.shape, self.shape, self._ctm),
+                           raise_if_zero=raise_if_zero)
+        bdm = self.bdm(X, raise_if_zero=raise_if_zero)
+        return (bdm - min_bdm) / (max_bdm - min_bdm)
 
     def compute_entropy(self, *counters):
         """Compute block entropy from counter.

@@ -58,15 +58,13 @@ def array_from_string(x, shape=None, cast_to=int, sep='-'):
         arr = arr.reshape(shape)
     return arr
 
-def string_from_array(arr, sep='-'):
+def string_from_array(arr):
     """Encode an array as a string code.
 
     Parameters
     ----------
     arr : (N, k) array_like
         *Numpy* array.
-    sep : str
-        Sequence separator.
 
     Returns
     -------
@@ -78,10 +76,10 @@ def string_from_array(arr, sep='-'):
     >>> string_from_array(np.array([1, 0, 0]))
     '100'
     >>> string_from_array(np.array([[1,0], [3,4]]))
-    '10-34'
+    '1034'
     """
     x = np.apply_along_axis(''.join, arr.ndim - 1, arr.astype(str))
-    x = sep.join(np.ravel(x))
+    x = ''.join(np.ravel(x))
     return x
 
 def encode_sequence(seq, base=2):
