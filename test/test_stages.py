@@ -2,10 +2,8 @@
 # pylint: disable=E1101,W0621,W0212
 from collections import Counter
 import pytest
-from pytest import approx
 import numpy as np
 from bdm.base import BDMBase, BDMIgnore, BDMRecursive
-from bdm.encoding import decode_string as dec
 
 
 @pytest.fixture(scope='session')
@@ -52,16 +50,6 @@ def test_partition_shrink(x, shape, min_length, expected):
     output = [ p for p in bdm.partition(x, shape=shape) ]
     assert len(output) == len(expected)
     assert all([ np.array_equal(o, e) for o, e in zip(output, expected) ])
-
-@pytest.mark.parametrize('parts,expected', [
-    ( [ np.ones((4, 4)).astype(int) ],
-      [ (dec(65535, (4, 4)), 22.006706292292176) ] ),
-])
-def test_lookup(parts, bdm_d2_base, expected):
-    output = [ x for x in bdm_d2_base.lookup(parts) ]
-    for o, e in zip(output, expected):
-        assert o[0] == e[0]
-        assert o[1] == approx(e[1])
 
 @pytest.mark.parametrize('ctms,expected', [
     ([ (65535, 22.0067) for _ in range(4) ], Counter([

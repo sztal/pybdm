@@ -16,21 +16,18 @@ from collections import deque
 import numpy as np
 
 
-def array_from_string(x, shape=None, cast_to=int, sep='-'):
+def array_from_string(x, shape, cast_to=int):
     """Make array from string code.
 
     Parameters
     ----------
     x : str
         String code.
-    shape : tuple or None
+    shape : tuple
         Desired shape of the output array.
-        Determined automatically based on `x` is ``None``.
     cast_to : type or None
         Cast array to given type. No casting if ``None``.
         Defaults to integer type.
-    sep : str
-        Sequence separator.
 
     Returns
     -------
@@ -39,24 +36,18 @@ def array_from_string(x, shape=None, cast_to=int, sep='-'):
 
     Examples
     --------
-    >>> array_from_string('1010')
+    >>> array_from_string('1010', shape=(4,))
     array([1, 0, 1, 0])
-    >>> array_from_string('10-00')
+    >>> array_from_string('1000', shape=(2, 2))
     array([[1, 0],
            [0, 0]])
     """
-    if sep in x:
-        arr = [ list(s) for s in x.split(sep) ]
-    else:
-        arr = list(x)
-    arr = np.array(arr)
+    arr = np.array(list(x))
     if arr.ndim == 0:
         arr = arr.reshape((1, ))
     if cast_to:
         arr = arr.astype(cast_to)
-    if shape is not None:
-        arr = arr.reshape(shape)
-    return arr
+    return arr.reshape(shape)
 
 def string_from_array(arr):
     """Encode an array as a string code.
@@ -163,43 +154,6 @@ def decode_sequence(code, base=2, min_length=None):
         for _ in range(min_length - n):
             bits.appendleft(0)
     return np.array(bits)
-
-def encode_string(x, base=2):
-    """Encode sequence-string to integer code.
-
-    Parameters
-    ----------
-    x : str
-        Sequence string.
-    Base : int
-        Encoding base.
-
-    Returns
-    -------
-    int
-        Integer code for a sequence-string.
-    """
-    return encode_array(array_from_string(x), base=base)
-
-def decode_string(code, shape, base=2):
-    """Decode sequence-string from an integer code.
-
-    Parameters
-    ----------
-    code : int
-        Non-negative integer.
-    base : int
-        Encoding base.
-    min_length : int or None
-        Minimal number of represented bits.
-        Use shortest representation if ``None``.
-
-    Returns
-    -------
-    str
-        Sequence-string corresponding to an integer code.
-    """
-    return string_from_array(decode_array(code, shape, base=base))
 
 def encode_array(x, base=2, **kwds):
     """Encode array of integer-symbols.

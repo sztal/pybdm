@@ -12,9 +12,9 @@ s0 = '0'*24
 s1 = '0'*12+'1'*12
 s2 = '0'*6+'1'*12+'0'*18+'1'*12
 
-bdm1_test_input = [(array_from_string(s0), 26.610413747641715),
-                   (array_from_string(s1), 51.22082749528343),
-                   (array_from_string(s2), 114.06151272200972)]
+bdm1_test_input = [(array_from_string(s0, (24,)), 26.610413747641715),
+                   (array_from_string(s1, (24,)), 51.22082749528343),
+                   (array_from_string(s2, (48,)), 114.06151272200972)]
 
 _dirpath = os.path.join(os.path.split(__file__)[0], 'data')
 # Get test input data and expected values
@@ -23,20 +23,26 @@ with open(os.path.join(_dirpath, 'bdm-b2-d4x4-test-input.tsv'), 'r') as stream:
     for line in stream:
         string, bdm = line.strip().split("\t")
         bdm = float(bdm.strip())
-        arr = array_from_string(string.strip())
+        arr = np.array([
+            array_from_string(x, (len(x),)) for x in
+            string.strip().split('-')
+        ])
         bdm2_test_input.append((arr, bdm))
 
 
-ent1_test_input = [(array_from_string(s0), 0.0),
-                   (array_from_string(s1), 1.0),
-                   (array_from_string(s2), 2.0)]
+ent1_test_input = [(array_from_string(s0, (24,)), 0.0),
+                   (array_from_string(s1, (24,)), 1.0),
+                   (array_from_string(s2, (48,)), 2.0)]
 
 ent2_test_input = []
 with open(os.path.join(_dirpath, 'ent-b2-d4x4-test-input.tsv'), 'r') as stream:
     for line in stream:
         string, ent2 = line.strip().split(",")
         ent2 = float(ent2.strip())
-        arr = array_from_string(string.strip())
+        arr = np.array([
+            array_from_string(x, (len(x),)) for x in
+            string.strip().split('-')
+        ])
         ent2_test_input.append((arr, ent2))
 
 
