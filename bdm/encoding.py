@@ -270,8 +270,6 @@ def normalize_array(X):
     array([[0, 1],
            [1, 0]])
     """
-    if not issubclass(X.dtype.type, np.integer):
-        raise TypeError("'X' has to be an integer array")
     shp = X.shape
     ndim = X.ndim
     dct = {}

@@ -299,6 +299,10 @@ class BDMBase:
 
         Raises
         ------
+        TypeError
+            If `X` is not an integer array.
+        ValueError
+            If `X` has more than `n_symbols` unique values.
         ValueError
             If computed BDM value is 0 and `raise_if_zero` is ``True``.
 
@@ -309,6 +313,12 @@ class BDMBase:
         >>> bdm.bdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         25.176631293734488
         """
+        if not issubclass(X.dtype.type, np.integer):
+            raise TypeError("'X' has to be an integer array")
+        if np.unique(X).size > self.n_symbols:
+            raise ValueError("'X' has more than {} unique symbols".format(
+                self.n_symbols
+            ))
         counter = self.count_and_lookup(X)
         cmx = self.compute_bdm(counter)
         if raise_if_zero and cmx == 0:
@@ -334,6 +344,10 @@ class BDMBase:
 
         Raises
         ------
+        TypeError
+            If `X` is not an integer array.
+        ValueError
+            If `X` has more than `n_symbols` unique values.
         ValueError
             If computed BDM value is 0 and `raise_if_zero` is ``True``.
 
