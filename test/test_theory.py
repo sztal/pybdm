@@ -3,6 +3,7 @@
 It checks whether CTM values are transpose invariant.
 This test is slow.
 """
+# pylint: disable=protected-access
 import pytest
 from pytest import approx
 import numpy as np
@@ -28,3 +29,16 @@ def test_complement_conjecture_d2(bdm_d2):
         arr = decode_array(i, (4, 4))
         c_arr = np.where(arr == 1, 0, 1)
         assert bdm_d2.bdm(arr) == approx(bdm_d2.bdm(c_arr))
+
+def test_flip_complemente_1d(bdm_d1):
+
+    def flip(s):
+        return ''.join('1' if x == '0' else '0' for x in s)
+
+    ctm = bdm_d1._ctm
+    for i in range(1, 13):
+        shp = (i, )
+        dct = ctm[shp]
+        for s in dct.keys():
+            fs = flip(s)
+            assert dct[s] == dct[fs]
