@@ -285,3 +285,36 @@ def normalize_array(X):
     if ndim > 1:
         X = X.reshape(shp)
     return X
+
+def normalize_key(key):
+    """Normalize part key so symbols are consecutively mapped to 0, 1, 2, ...
+
+    Parameters
+    ----------
+    key : str
+        Part key as returned by :py:func:`string_from_array`.
+
+    Returns
+    -------
+    str
+        Normalized key with mapped symbols.
+
+    Examples
+    --------
+    >>> normalize_key('123')
+    '012'
+    >>> normalize_key('40524')
+    '01230'
+    """
+    dct = {}
+    counter = 0
+
+    def _normalize(s):
+        nonlocal dct
+        nonlocal counter
+        if s not in dct:
+            dct[s] = counter
+            counter += 1
+        return str(dct[s])
+
+    return ''.join(_normalize(s) for s in key)
