@@ -454,9 +454,10 @@ class BDMIgnore(BDMBase):
     """
     boundary_condition = 'ignore'
 
-    def __init__(self, ndim, shape=None, ctmname=None):
+    def __init__(self, ndim, shape=None, ctmname=None, n_symbols=2):
         """Initialization method."""
-        super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname)
+        super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname,
+                         n_symbols=n_symbols)
 
     def partition(self, X, shape=None):
         """Partition with ignore leftovers boundary condition.
@@ -495,9 +496,10 @@ class BDMRecursive(BDMBase):
     """
     boundary_condition = 'recursive'
 
-    def __init__(self, ndim, min_length, shape=None, ctmname=None):
+    def __init__(self, ndim, min_length, shape=None, ctmname=None, n_symbols=2):
         """Initialization method."""
-        super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname)
+        super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname,
+                         n_symbols=n_symbols)
         self.min_length = min_length
 
     def partition(self, X, shape=None):
