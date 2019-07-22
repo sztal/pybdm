@@ -246,3 +246,39 @@ def decode_array(code, shape, base=2, **kwds):
         raise ValueError(f"{code} does not encode array of shape {shape}")
     arr = seq.reshape(shape, **kwds)
     return arr
+
+def normalize_array(X):
+    """Normalize array so symbols are consecutively mapped to 0, 1, 2, ...
+
+    Parameters
+    ----------
+    X : array_like
+        *Numpy* array of arbitrary dimensions.
+
+    Returns
+    -------
+    array_like
+        *Numpy* array of the same dimensions with mapped symbols.
+
+    Examples
+    --------
+    >>> X = np.array([1, 2, 3], dtype=int)
+    >>> normalize_array(X)
+    array([0, 1, 2])
+    >>> X = np.array([[1,2],[2,1]], dtype=int)
+    >>> normalize_array(X)
+    array([[0, 1],
+           [1, 0]])
+    """
+    if not issubclass(X.dtype.type, np.integer):
+        raise TypeError("'X' has to be an integer array")
+    shp = X.shape
+    dct = {}
+    counter = 0
+    X = X.ravel()
+    for idx, x in np.ndenumerate(X):
+        if x not in dct:
+            dct[x] = counter
+            counter += 1
+        X[idx] = dct[x]
+    return X.reshape(shp)
