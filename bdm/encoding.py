@@ -273,12 +273,17 @@ def normalize_array(X):
     if not issubclass(X.dtype.type, np.integer):
         raise TypeError("'X' has to be an integer array")
     shp = X.shape
+    ndim = X.ndim
     dct = {}
     counter = 0
-    X = X.ravel()
+    X = X.copy()
+    if ndim > 1:
+        X = X.ravel()
     for idx, x in np.ndenumerate(X):
         if x not in dct:
             dct[x] = counter
             counter += 1
         X[idx] = dct[x]
-    return X.reshape(shp)
+    if ndim > 1:
+        X = X.reshape(shp)
+    return X

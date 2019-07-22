@@ -86,12 +86,18 @@ class BDMBase:
         Name of the CTM dataset.
     """
     _ndim_to_ctm = {
-        1: 'CTM-B2-D12',
-        2: 'CTM-B2-D4x4'
+        # 1D datasets
+        (1, 2): 'CTM-B2-D12',
+        (1, 4): 'CTM-B4-D12',
+        (1, 5): 'CTM-B5-D12',
+        (1, 6): 'CTM-B6-D12',
+        (1, 9): 'CTM-B9-D12',
+        # 2D datasets
+        (2, 2): 'CTM-B2-D4x4',
     }
     boundary_condition = 'none'
 
-    def __init__(self, ndim, shift, shape=None, ctmname=None):
+    def __init__(self, ndim, shift, shape=None, ctmname=None, n_symbols=2):
         """Initialization method.
 
         Raises
@@ -103,9 +109,9 @@ class BDMBase:
             raise AttributeError("'shift' supports only values of `0` and `1`")
         self.ndim = ndim
         self.shift = shift
-        self.ctmname = ctmname if ctmname else self._ndim_to_ctm[ndim]
-        _n_sym, _shape = self.ctmname.split('-')[-2:]
-        self.n_symbols = int(_n_sym[1:])
+        self.n_symbols = n_symbols
+        self.ctmname = ctmname if ctmname else self._ndim_to_ctm[(ndim, n_symbols)]
+        _, _shape = self.ctmname.split('-')[-2:]
         if shape is None:
             self.shape = tuple(int(x) for x in _shape[1:].split('x'))
         elif any([ x != shape[0] for x in shape ]):
