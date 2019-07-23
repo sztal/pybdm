@@ -80,21 +80,21 @@ class TestBDM:
         output = bdm_d2.ent(X)
         assert output == approx(expected)
 
-    # @pytest.mark.parametrize('X,expected', [
-    #     (np.ones((30,), dtype=int), 0),
-    #     (np.array([0,1,0,0,0,1,1,0,0,0,1,0,0,0,1], dtype=int), 0.648665654727082)
-    # ])
-    # def test_nbdm_d1(self, bdm_d1, X, expected):
-    #     output = bdm_d1.nbdm(X)
-    #     assert output == approx(expected)
+    @pytest.mark.parametrize('X,expected', [
+        (np.ones((30,), dtype=int), 0),
+        (np.array([0,1,0,0,0,1,1,0,0,0,1,0,0,0,1], dtype=int), 0.648665654727082)
+    ])
+    def test_nbdm_d1(self, bdm_d1, X, expected):
+        output = bdm_d1.nbdm(X)
+        assert output == approx(expected)
 
-    # @pytest.mark.parametrize('X,expected', [
-    #     (np.ones((20, 20), dtype=int), 0),
-    #     (np.array([[0,0,1,0],[1,0,0,1],[0,0,1,1],[1,0,1,0]], dtype=int), 0.6139131118181638)
-    # ])
-    # def test_nbdm_d2(self, bdm_d2, X, expected):
-    #     output = bdm_d2.nbdm(X)
-    #     assert output == approx(expected)
+    @pytest.mark.parametrize('X,expected', [
+        (np.ones((20, 20), dtype=int), 0),
+        (np.array([[0,0,1,0],[1,0,0,1],[0,0,1,1],[1,0,1,0]], dtype=int), 0.6139131118181638)
+    ])
+    def test_nbdm_d2(self, bdm_d2, X, expected):
+        output = bdm_d2.nbdm(X)
+        assert output == approx(expected)
 
     # @pytest.mark.parametrize('X,expected', [
     #     (np.ones((30,), dtype=int), 0),

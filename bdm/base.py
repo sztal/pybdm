@@ -12,8 +12,10 @@ properly and then it exposes a public method :py:meth:`bdm.BDM.complexity`
 for computing approximated complexity via BDM.
 """
 # pylint: disable=W0221
-from collections import Counter
+from math import factorial, log2
+from collections import Counter, defaultdict
 from functools import reduce
+from itertools import cycle, repeat, chain
 import numpy as np
 from .utils import get_ctm_dataset, slice_dataset
 from .encoding import string_from_array, normalize_key
@@ -277,7 +279,7 @@ class BDMBase:
         bdm = 0
         for key, n in counter.items():
             _, ctm = key
-            bdm += ctm + np.log2(n)
+            bdm += ctm + log2(n)
         return bdm
 
     def bdm(self, X, raise_if_zero=True):
@@ -325,48 +327,79 @@ class BDMBase:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
         return cmx
 
-    # def _cycle_parts(self, descending=True):
-    #     """Cycle over all possible dataset parts sorted by complexity."""
-    #     parts = self._ctm
+    def _cycle_parts(self, shape):
+        """Cycle over all possible dataset parts sorted by complexity."""
 
-    # def nbdm(self, X, raise_if_zero=True):
-    #     """Normalized BDM.
+        def rep(part):
+            key, cmx = part
+            n = len(set(key))
+            k = factorial(self.n_symbols) / factorial(self.n_symbols - n)
+            return repeat((key, cmx), int(k))
 
-    #     Parameters
-    #     ----------
-    #     X : array_like
-    #         Dataset representation as a :py:class:`numpy.ndarray`.
-    #         Number of axes must agree with the `ndim` attribute.
-    #     raise_if_zero: bool
-    #         Should error be raised if BDM value is zero.
-    #         Zero value indicates that a dataset could have incorrect dimensions.
+        parts = chain.from_iterable(map(rep, self._ctm[shape].items()))
+        return cycle(enumerate(parts))
 
-    #     Returns
-    #     -------
-    #     float
-    #         Normalized approximate algorithmic complexity.
+    def _get_max_bdm(self, X):
+        cycle_dct = {}
+        counter_dct = defaultdict(Counter)
+        for part in self.partition(X):
+            if part.shape not in cycle_dct:
+                cycle_dct[part.shape] = self._cycle_parts(part.shape)
+            idx, kv = next(cycle_dct[part.shape])
+            _, cmx = kv
+            counter_dct[part.shape].update(((idx, cmx),))
 
-    #     Raises
-    #     ------
-    #     TypeError
-    #         If `X` is not an integer array.
-    #     ValueError
-    #         If `X` has more than `n_symbols` unique values.
-    #     ValueError
-    #         If computed BDM value is 0 and `raise_if_zero` is ``True``.
+        max_bdm = 0
+        for dct in counter_dct.values():
+            for c, n in dct.items():
+                _, cmx = c
+                max_bdm += cmx + log2(n)
+        return max_bdm
 
-    #     Examples
-    #     --------
-    #     >>> import numpy as np
-    #     >>> bdm = BDMBase(ndim=2, shift=0)
-    #     >>> bdm.nbdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
-    #     0.0
-    #     """
-    #     min_bdm = self.bdm(make_min_data(X.shape), raise_if_zero=raise_if_zero)
-    #     max_bdm = self.bdm(make_max_data(X.shape, self.shape, self._ctm),
-    #                        raise_if_zero=raise_if_zero)
-    #     bdm = self.bdm(X, raise_if_zero=raise_if_zero)
-    #     return (bdm - min_bdm) / (max_bdm - min_bdm)
+    def _get_min_bdm(self, X):
+        return self.bdm(np.zeros_like(X, dtype=np.uint8))
+
+    def nbdm(self, X, raise_if_zero=True):
+        """Normalized BDM.
+
+        Parameters
+        ----------
+        X : array_like
+            Dataset representation as a :py:class:`numpy.ndarray`.
+            Number of axes must agree with the `ndim` attribute.
+        raise_if_zero: bool
+            Should error be raised if BDM value is zero.
+            Zero value indicates that a dataset could have incorrect dimensions.
+
+        Returns
+        -------
+        float
+            Normalized approximate algorithmic complexity.
+
+        Raises
+        ------
+        TypeError
+            If `X` is not an integer array.
+        ValueError
+            If `X` has more than `n_symbols` unique values.
+        ValueError
+            If computed BDM value is 0 and `raise_if_zero` is ``True``.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> bdm = BDMBase(ndim=2, shift=0)
+        >>> bdm.nbdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
+        0.0
+        >>> X = np.array([0,0,0,1,1,0,1,0,0,1,1,1], dtype=int)
+        >>> bdm = BDMIgnore(ndim=1)
+        >>> bdm.nbdm(X) # doctest: +FLOAT_CMP
+        1.0
+        """
+        min_bdm = self._get_min_bdm(X)
+        max_bdm = self._get_max_bdm(X)
+        bdm = self.bdm(X, raise_if_zero=raise_if_zero)
+        return (bdm - min_bdm) / (max_bdm - min_bdm)
 
     def compute_ent(self, *counters):
         """Compute block entropy from counter.

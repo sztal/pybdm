@@ -1,5 +1,6 @@
 """Utility functions."""
 import pickle
+from collections import OrderedDict
 from functools import lru_cache
 from pkg_resources import resource_stream
 import numpy as np
@@ -247,4 +248,8 @@ def get_ctm_dataset(name):
     if name not in _ctm_datasets:
         raise ValueError(f"There is no {name} CTM dataset")
     with resource_stream(_ctmdata_path, _ctm_datasets[name]) as stream:
-        return pickle.load(stream)
+        dct = pickle.load(stream)
+    for key in dct:
+        o = dct[key]
+        dct[key] = OrderedDict(sorted(o.items(), key=lambda x: x[1], reverse=True))
+    return dct
