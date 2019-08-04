@@ -126,7 +126,7 @@ into a single BDM approximation of the algorithmic complexity of the dataset.
 
     # Compute counter objects in parallel
     counters = Parallel(n_jobs=4) \
-        (delayed(bdm.count_and_lookup)(d) for d in slice_dataset(X, (200, 200)))
+        (delayed(bdm.lookup_and_count)(d) for d in slice_dataset(X, (200, 200)))
 
     # Compute BDM
     bdm.compute_bdm(*counters)

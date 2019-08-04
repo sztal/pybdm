@@ -1,11 +1,10 @@
 """Utility functions."""
 import pickle
+from collections import OrderedDict
 from functools import lru_cache
-from itertools import cycle
 from pkg_resources import resource_stream
 import numpy as np
 from .ctmdata import CTM_DATASETS as _ctm_datasets, __name__ as _ctmdata_path
-from .encoding import array_from_string
 
 
 def get_reduced_shape(X, shape, shift=0, size_only=True):
@@ -220,7 +219,7 @@ def list_ctm_datasets():
     Examples
     --------
     >>> list_ctm_datasets()
-    ['CTM-B2-D12', 'CTM-B2-D4x4']
+    ['CTM-B2-D12', 'CTM-B2-D4x4', 'CTM-B4-D12', 'CTM-B5-D12', 'CTM-B6-D12', 'CTM-B9-D12']
     """
     return [ x for x in sorted(_ctm_datasets.keys()) ]
 
@@ -249,48 +248,11 @@ def get_ctm_dataset(name):
     if name not in _ctm_datasets:
         raise ValueError(f"There is no {name} CTM dataset")
     with resource_stream(_ctmdata_path, _ctm_datasets[name]) as stream:
-        return pickle.load(stream)
-
-def make_min_data(shape):
-    """Make minimally complex array of given shape.
-
-    Parameters
-    ----------
-    shape : tuple
-        Shape tuple.
-
-    Returns
-    -------
-    array_like
-        Minimally complex array.
-    """
-    return np.zeros(shape, dtype=int)
-
-def make_max_data(shape, part_shape, ctmdata):
-    """Make maximally complex array of given shape.
-
-    Parameters
-    ----------
-    shape : tuple
-        Shape tuple.
-    part_shape : tuple
-        Dataset part shape tuple.
-    ctmdata : dict
-        CTM reference dataset.
-
-    Returns
-    -------
-    array_like
-        Maximally complex array.
-    """
-    X = np.zeros(shape, dtype=int)
-    parts = cycle(ctmdata[part_shape])
-    r_arr = get_reduced_shape_array(X, part_shape)
-    for idx, key in zip(r_arr.flat, parts):
-        part = array_from_string(key, part_shape)
-        try:
-            X[idx] = part
-        except ValueError:
-            part = part[tuple(slice(k) for k in X[idx].shape)]
-            X[idx] = part
-    return X
+        dct = pickle.load(stream)
+    for key in dct:
+        o = dct[key]
+        dct[key] = OrderedDict(sorted(o.items(), key=lambda x: x[1], reverse=True))
+    missing = {}
+    for sh, cmx in dct.items():
+        missing[sh] = np.mean(list(cmx.values()))
+    return dct, missing

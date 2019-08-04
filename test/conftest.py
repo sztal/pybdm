@@ -1,6 +1,6 @@
 """*PyTest* configuration and general purpose fixtures."""
 import pytest
-from bdm import BDM
+from bdm import BDM, BDMRecursive
 
 
 def pytest_addoption(parser):
@@ -46,3 +46,7 @@ def bdm_d1():
 @pytest.fixture(scope='session')
 def bdm_d2():
     return BDM(ndim=2)
+
+@pytest.fixture(scope='session')
+def bdm_d1_b9():
+    return BDMRecursive(ndim=1, min_length=1, nsymbols=9)
