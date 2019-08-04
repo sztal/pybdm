@@ -1,7 +1,7 @@
 """Core algorithms operating on ``BDM`` objects."""
 from itertools import product
+from random import choice
 import numpy as np
-from numpy.random import choice
 
 
 class PerturbationExperiment:

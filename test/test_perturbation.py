@@ -1,6 +1,7 @@
 """Tests for the `algorithms` module."""
 # pylint: disable=W0212,W0621
 # pylint: disable=R0914
+from random import choice
 import pytest
 from pytest import approx
 import numpy as np
@@ -33,6 +34,12 @@ def perturbation_d1_overlap():
     X = np.random.randint(0, 2, (100, ), dtype=int)
     bdm = BDMBase(ndim=1, shift=1)
     return PerturbationExperiment(bdm, X)
+
+@pytest.fixture(scope='function')
+def perturbation_d1_b9(bdm_d1_b9):
+    np.random.seed(10101)
+    X = np.random.randint(0, 9, (100,), dtype=int)
+    return PerturbationExperiment(bdm_d1_b9, X)
 
 @pytest.fixture(scope='function')
 def perturbation_ent(bdm_d2):
@@ -107,7 +114,10 @@ class TestPerturbationExperiment:
         if value >= 0:
             X1[idx] = value
         else:
-            X1[idx] = 0 if X0[idx] == 1 else 1
+            current_value = X0[idx]
+            symbols = [ s for s in range(perturbation.bdm.nsymbols) if s != current_value ]
+            value = choice(symbols)
+            X1[idx] = value
         C1 = perturbation.bdm.lookup_and_count(X1)
         if metric == 'bdm':
             x0 = perturbation.bdm.bdm(X0)
@@ -157,6 +167,14 @@ class TestPerturbationExperiment:
     def test_perturb_d1_overlap(self, perturbation_d1_overlap, idx, value, keep_changes):
         self._assert_perturb(
             perturbation_d1_overlap, idx, value, keep_changes, metric='bdm'
+        )
+
+    @pytest.mark.parametrize('idx', [(0,), (1,), (55,), (99,)])
+    @pytest.mark.parametrize('value', [1, 0, -1])
+    @pytest.mark.parametrize('keep_changes', [True, False])
+    def test_perturb_d1_b9(self, perturbation_d1_b9, idx, value, keep_changes):
+        self._assert_perturb(
+            perturbation_d1_b9, idx, value, keep_changes, metric='bdm'
         )
 
     @pytest.mark.parametrize('idx', [(0, 0), (1, 0), (10, 15), (24, 24)])

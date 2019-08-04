@@ -12,6 +12,7 @@ properly and then it exposes a public method :py:meth:`bdm.BDM.complexity`
 for computing approximated complexity via BDM.
 """
 # pylint: disable=W0221
+import warnings
 from math import factorial, log2
 from collections import Counter, defaultdict
 from functools import reduce
@@ -19,6 +20,7 @@ from itertools import cycle, repeat, chain
 import numpy as np
 from .utils import get_ctm_dataset, slice_dataset
 from .encoding import string_from_array, normalize_key
+from .exceptions import BDMRuntimeWarning
 
 
 class BDMBase:
@@ -85,6 +87,12 @@ class BDMBase:
         Shape of slices.
     ctmname : str
         Name of the CTM dataset.
+    warn_if_missing_ctm : bool
+        Should ``BDMRuntimeWarning`` be sent in case there is missing CTM value.
+        Some CTM values may be missing for larger alphabets as it is
+        computationally infeasible to explore entire parts space.
+        Missing CTM values are imputed with mean CTM complexities
+        over all parts of a given shape.
     """
     _ndim_to_ctm = {
         # 1D datasets
@@ -98,7 +106,8 @@ class BDMBase:
     }
     boundary_condition = 'none'
 
-    def __init__(self, ndim, shift, shape=None, ctmname=None, nsymbols=2):
+    def __init__(self, ndim, shift, shape=None, ctmname=None, nsymbols=2,
+                 warn_if_missing_ctm=True):
         """Initialization method.
 
         Raises
@@ -119,8 +128,10 @@ class BDMBase:
             raise AttributeError("'shape' has to be equal in each dimension")
         else:
             self.shape = shape
-        self._ctm = get_ctm_dataset(self.ctmname)
-        self._sep = '-'
+        ctm, ctm_missing = get_ctm_dataset(self.ctmname)
+        self._ctm = ctm
+        self._ctm_missing = ctm_missing
+        self.warn_if_missing_ctm = warn_if_missing_ctm
 
     def partition(self, X, shape=None):
         """Standard partition stage function.
@@ -198,7 +209,10 @@ class BDMBase:
             try:
                 cmx = self._ctm[sh][_key]
             except KeyError:
-                raise KeyError(f"CTM dataset does not contain object '{key}' of shape {sh}")
+                cmx = self._ctm_missing[sh]
+                if self.warn_if_missing_ctm:
+                    msg = f"CTM dataset does not contain object '{key}' of shape {sh}"
+                    warnings.warn(msg, BDMRuntimeWarning, stacklevel=2)
             yield key, cmx
 
     def aggregate(self, ctms):

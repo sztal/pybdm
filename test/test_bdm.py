@@ -1,12 +1,14 @@
 """Tests for `bdm` module."""
 # pylint: disable=W0621
 import os
+import warnings
 import pytest
 from pytest import approx
 import numpy as np
 from joblib import Parallel, delayed
 from bdm.encoding import array_from_string
 from bdm.utils import slice_dataset
+from bdm.exceptions import BDMRuntimeWarning
 
 s0 = '0'*24
 s1 = '0'*12+'1'*12
@@ -59,11 +61,19 @@ class TestBDM:
         ([0,1,2,3,4,5,6,7,8,8,8,5], 49.712),
         ([2,1,0,3,4,5,6,7,8,8,8,5], 49.712),
         ([2,1,0,3,4,5,6,7,8,8,8,5,4,2,4], 49.712 + 11.90539),
-        ([4,1,2,1,5,4,0,5,1,8,4,2], 0)
+        ([4,1,2,1,5,4,0,5,1,8,4,2], 48.3965047),
+        ([4,1,2,1,5,4,0,5,1,8,4,2,0,1,2,3,4,
+          5,6,7,8,8,8,5,0,1,2,3,4,5,6,7,8,8,8,5], 48.3965047 + 49.712 + 1)
     ])
     def test_bdm_d1_b9(self, bdm_d1_b9, X, expected):
         X = np.array(X)
-        output = bdm_d1_b9.bdm(X)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter('always')
+            output = bdm_d1_b9.bdm(X)
+            if w:
+                assert issubclass(w[-1].category, BDMRuntimeWarning)
+                assert str(w[-1].message) \
+                    .startswith("CTM dataset does not contain object")
         assert output == approx(expected)
 
     @pytest.mark.parametrize('X,expected', bdm2_test_input)
