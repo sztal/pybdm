@@ -4,7 +4,7 @@
 import pytest
 from pytest import approx
 import numpy as np
-from bdm.base import BDMBase
+from bdm.bdm import BDMBase
 from bdm.algorithms import PerturbationExperiment
 
 
@@ -108,7 +108,7 @@ class TestPerturbationExperiment:
             X1[idx] = value
         else:
             X1[idx] = 0 if X0[idx] == 1 else 1
-        C1 = perturbation.bdm.count_and_lookup(X1)
+        C1 = perturbation.bdm.lookup_and_count(X1)
         if metric == 'bdm':
             x0 = perturbation.bdm.bdm(X0)
             x1 = perturbation.bdm.bdm(X1)

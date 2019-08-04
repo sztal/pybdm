@@ -3,7 +3,7 @@
 from collections import Counter
 import pytest
 import numpy as np
-from bdm.base import BDMBase, BDMIgnore, BDMRecursive
+from bdm.bdm import BDMBase, BDMIgnore, BDMRecursive
 
 
 @pytest.fixture(scope='session')

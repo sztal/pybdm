@@ -58,7 +58,8 @@ class TestBDM:
         ([0,0,0], 11.66997),
         ([0,1,2,3,4,5,6,7,8,8,8,5], 49.712),
         ([2,1,0,3,4,5,6,7,8,8,8,5], 49.712),
-        ([2,1,0,3,4,5,6,7,8,8,8,5,4,2,4], 49.712 + 11.90539)
+        ([2,1,0,3,4,5,6,7,8,8,8,5,4,2,4], 49.712 + 11.90539),
+        ([4,1,2,1,5,4,0,5,1,8,4,2], 0)
     ])
     def test_bdm_d1_b9(self, bdm_d1_b9, X, expected):
         X = np.array(X)
@@ -96,28 +97,28 @@ class TestBDM:
         output = bdm_d2.nbdm(X)
         assert output == approx(expected)
 
-    # @pytest.mark.parametrize('X,expected', [
-    #     (np.ones((30,), dtype=int), 0),
-    #     (np.array([0 for i in range(12)]+[1 for i in range(12)], dtype=int), 1)
-    # ])
-    # def test_nent_d1(self, bdm_d1, X, expected):
-    #     output = bdm_d1.nent(X)
-    #     assert output == approx(expected)
+    @pytest.mark.parametrize('X,expected', [
+        (np.ones((30,), dtype=int), 0),
+        (np.array([0 for i in range(12)]+[1 for i in range(12)], dtype=int), 1)
+    ])
+    def test_nent_d1(self, bdm_d1, X, expected):
+        output = bdm_d1.nent(X)
+        assert output == approx(expected)
 
-    # @pytest.mark.parametrize('X,expected', [
-    #     (np.ones((20, 20), dtype=int), 0),
-    #     (np.vstack((np.ones((4, 4), dtype=int), np.zeros((4, 4), dtype=int))), 1)
-    # ])
-    # def test_nent_d2(self, bdm_d2, X, expected):
-    #     output = bdm_d2.nent(X)
-    #     assert output == approx(expected)
+    @pytest.mark.parametrize('X,expected', [
+        (np.ones((20, 20), dtype=int), 0),
+        (np.vstack((np.ones((4, 4), dtype=int), np.zeros((4, 4), dtype=int))), 1)
+    ])
+    def test_nent_d2(self, bdm_d2, X, expected):
+        output = bdm_d2.nent(X)
+        assert output == approx(expected)
 
     @pytest.mark.slow
     def test_bdm_parallel(self, bdm_d2):
         X = np.ones((500, 500), dtype=int)
         expected = bdm_d2.bdm(X)
         counters = Parallel(n_jobs=2) \
-            (delayed(bdm_d2.count_and_lookup)(d)
+            (delayed(bdm_d2.lookup_and_count)(d)
              for d in slice_dataset(X, (100, 100)))
         output = bdm_d2.compute_bdm(*counters)
         assert output == approx(expected)

@@ -69,7 +69,7 @@ class PerturbationExperiment:
             Dataset to perturb.
         """
         self.X = X
-        self._counter = self.bdm.count_and_lookup(X)
+        self._counter = self.bdm.lookup_and_count(X)
         if self.metric == 'bdm':
             self._value = self.bdm.compute_bdm(self._counter)
         elif self.metric == 'ent':
@@ -181,11 +181,11 @@ class PerturbationExperiment:
         """
         old_value = self.X[idx]
         if value < 0:
-            if self.bdm.n_symbols <= 2:
+            if self.bdm.nsymbols <= 2:
                 value = 1 if old_value == 0 else 0
             else:
                 value = choice([
-                    x for x in range(self.bdm.n_symbols)
+                    x for x in range(self.bdm.nsymbols)
                     if x != old_value
                 ])
         if old_value == value:

@@ -49,4 +49,4 @@ def bdm_d2():
 
 @pytest.fixture(scope='session')
 def bdm_d1_b9():
-    return BDMRecursive(ndim=1, min_length=1, n_symbols=9)
+    return BDMRecursive(ndim=1, min_length=1, nsymbols=9)
