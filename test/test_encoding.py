@@ -7,11 +7,11 @@ from bdm.encoding import array_from_string, string_from_array
 
 
 @pytest.mark.parametrize('x,shape,expected', [
-    ('', None, np.array([])),
-    ('1010', None, np.array([1, 0, 1, 0])),
-    ('1-0', None, np.array([[1], [0]])),
-    ('0000-1000-0101', None, np.array([[0,0,0,0], [1,0,0,0], [0,1,0,1]])),
-    ('12-34-56-78', (2, 2, 2), np.array([[[1,2],[3,4]], [[5,6],[7,8]]]))
+    ('', (0,), np.array([])),
+    ('1010', (4,), np.array([1, 0, 1, 0])),
+    ('10', (2, 1), np.array([[1], [0]])),
+    ('000010000101', (3, 4), np.array([[0,0,0,0], [1,0,0,0], [0,1,0,1]])),
+    ('12345678', (2, 2, 2), np.array([[[1,2],[3,4]], [[5,6],[7,8]]]))
 ])
 def test_array_from_string(x, shape, expected):
     output = array_from_string(x, shape=shape)

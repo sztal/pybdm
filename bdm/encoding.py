@@ -14,23 +14,21 @@ finite alphabet of symbols can be uniquely mapped to an integer code.
 """
 from collections import deque
 import numpy as np
+from .utils import prod
 
 
-def array_from_string(x, shape=None, cast_to=int, sep='-'):
+def array_from_string(x, shape, cast_to=int):
     """Make array from string code.
 
     Parameters
     ----------
     x : str
         String code.
-    shape : tuple or None
+    shape : tuple
         Desired shape of the output array.
-        Determined automatically based on `x` is ``None``.
     cast_to : type or None
         Cast array to given type. No casting if ``None``.
         Defaults to integer type.
-    sep : str
-        Sequence separator.
 
     Returns
     -------
@@ -39,24 +37,18 @@ def array_from_string(x, shape=None, cast_to=int, sep='-'):
 
     Examples
     --------
-    >>> array_from_string('1010')
+    >>> array_from_string('1010', shape=(4,))
     array([1, 0, 1, 0])
-    >>> array_from_string('10-00')
+    >>> array_from_string('1000', shape=(2, 2))
     array([[1, 0],
            [0, 0]])
     """
-    if sep in x:
-        arr = [ list(s) for s in x.split(sep) ]
-    else:
-        arr = list(x)
-    arr = np.array(arr)
+    arr = np.array(list(x))
     if arr.ndim == 0:
         arr = arr.reshape((1, ))
     if cast_to:
         arr = arr.astype(cast_to)
-    if shape is not None:
-        arr = arr.reshape(shape)
-    return arr
+    return arr.reshape(shape)
 
 def string_from_array(arr):
     """Encode an array as a string code.
@@ -78,9 +70,7 @@ def string_from_array(arr):
     >>> string_from_array(np.array([[1,0], [3,4]]))
     '1034'
     """
-    x = np.apply_along_axis(''.join, arr.ndim - 1, arr.astype(str))
-    x = ''.join(np.ravel(x))
-    return x
+    return ''.join(map(str, arr.flat))
 
 def encode_sequence(seq, base=2):
     """Encode sequence of integer-symbols.
@@ -164,43 +154,6 @@ def decode_sequence(code, base=2, min_length=None):
             bits.appendleft(0)
     return np.array(bits)
 
-def encode_string(x, base=2):
-    """Encode sequence-string to integer code.
-
-    Parameters
-    ----------
-    x : str
-        Sequence string.
-    Base : int
-        Encoding base.
-
-    Returns
-    -------
-    int
-        Integer code for a sequence-string.
-    """
-    return encode_array(array_from_string(x), base=base)
-
-def decode_string(code, shape, base=2):
-    """Decode sequence-string from an integer code.
-
-    Parameters
-    ----------
-    code : int
-        Non-negative integer.
-    base : int
-        Encoding base.
-    min_length : int or None
-        Minimal number of represented bits.
-        Use shortest representation if ``None``.
-
-    Returns
-    -------
-    str
-        Sequence-string corresponding to an integer code.
-    """
-    return string_from_array(decode_array(code, shape, base=base))
-
 def encode_array(x, base=2, **kwds):
     """Encode array of integer-symbols.
 
@@ -240,9 +193,78 @@ def decode_array(code, shape, base=2, **kwds):
     array_like
         *Numpy* array.
     """
-    length = np.multiply.reduce(shape)
+    length = prod(shape)
     seq = decode_sequence(code, base=base, min_length=length)
     if seq.size > length:
         raise ValueError(f"{code} does not encode array of shape {shape}")
     arr = seq.reshape(shape, **kwds)
     return arr
+
+def normalize_array(X):
+    """Normalize array so symbols are consecutively mapped to 0, 1, 2, ...
+
+    Parameters
+    ----------
+    X : array_like
+        *Numpy* array of arbitrary dimensions.
+
+    Returns
+    -------
+    array_like
+        *Numpy* array of the same dimensions with mapped symbols.
+
+    Examples
+    --------
+    >>> X = np.array([1, 2, 3], dtype=int)
+    >>> normalize_array(X)
+    array([0, 1, 2])
+    >>> X = np.array([[1,2],[2,1]], dtype=int)
+    >>> normalize_array(X)
+    array([[0, 1],
+           [1, 0]])
+    """
+    shp = X.shape
+    ndim = X.ndim
+    dct = {}
+    counter = 0
+    X = X.copy()
+    if ndim > 1:
+        X = X.ravel()
+    for idx, x in np.ndenumerate(X):
+        if x not in dct:
+            dct[x] = counter
+            counter += 1
+        X[idx] = dct[x]
+    if ndim > 1:
+        X = X.reshape(shp)
+    return X
+
+def normalize_key(key):
+    """Normalize part key so symbols are consecutively mapped to 0, 1, 2, ...
+
+    Parameters
+    ----------
+    key : str
+        Part key as returned by :py:func:`string_from_array`.
+
+    Returns
+    -------
+    str
+        Normalized key with mapped symbols.
+
+    Examples
+    --------
+    >>> normalize_key('123')
+    '012'
+    >>> normalize_key('40524')
+    '01230'
+    """
+    dct = {}
+    counter = 0
+    norm_key = ''
+    for x in key:
+        if x not in dct:
+            dct[x] = str(counter)
+            counter += 1
+        norm_key += dct[x]
+    return norm_key

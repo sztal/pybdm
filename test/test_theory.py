@@ -3,6 +3,7 @@
 It checks whether CTM values are transpose invariant.
 This test is slow.
 """
+# pylint: disable=protected-access
 import pytest
 from pytest import approx
 import numpy as np

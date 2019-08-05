@@ -12,12 +12,15 @@ properly and then it exposes a public method :py:meth:`bdm.BDM.complexity`
 for computing approximated complexity via BDM.
 """
 # pylint: disable=W0221
-from collections import Counter
+import warnings
+from math import factorial, log2
+from collections import Counter, defaultdict
 from functools import reduce
+from itertools import cycle, repeat, chain
 import numpy as np
 from .utils import get_ctm_dataset, slice_dataset
-from .utils import make_min_data, make_max_data
-from .encoding import string_from_array
+from .encoding import string_from_array, normalize_key
+from .exceptions import BDMRuntimeWarning, CTMDatasetNotFoundError
 
 
 class BDMBase:
@@ -78,20 +81,33 @@ class BDMBase:
         Shift value for the partition algorithm.
         If ``0`` then datasets are sliced into non-overlapping parts.
         If ``1`` then datasets are sliced into overlapping parts.
-    n_symbols : int
+    nsymbols : int
         Number of symbols in the alphabet.
     shape : tuple
         Shape of slices.
     ctmname : str
         Name of the CTM dataset.
+    warn_if_missing_ctm : bool
+        Should ``BDMRuntimeWarning`` be sent in case there is missing CTM value.
+        Some CTM values may be missing for larger alphabets as it is
+        computationally infeasible to explore entire parts space.
+        Missing CTM values are imputed with mean CTM complexities
+        over all parts of a given shape.
     """
     _ndim_to_ctm = {
-        1: 'CTM-B2-D12',
-        2: 'CTM-B2-D4x4'
+        # 1D datasets
+        (1, 2): 'CTM-B2-D12',
+        (1, 4): 'CTM-B4-D12',
+        (1, 5): 'CTM-B5-D12',
+        (1, 6): 'CTM-B6-D12',
+        (1, 9): 'CTM-B9-D12',
+        # 2D datasets
+        (2, 2): 'CTM-B2-D4x4',
     }
     boundary_condition = 'none'
 
-    def __init__(self, ndim, shift, shape=None, ctmname=None):
+    def __init__(self, ndim, shift, shape=None, ctmname=None, nsymbols=2,
+                 warn_if_missing_ctm=True):
         """Initialization method.
 
         Raises
@@ -103,17 +119,25 @@ class BDMBase:
             raise AttributeError("'shift' supports only values of `0` and `1`")
         self.ndim = ndim
         self.shift = shift
-        self.ctmname = ctmname if ctmname else self._ndim_to_ctm[ndim]
-        _n_sym, _shape = self.ctmname.split('-')[-2:]
-        self.n_symbols = int(_n_sym[1:])
+        self.nsymbols = nsymbols
+        try:
+            self.ctmname = ctmname if ctmname else self._ndim_to_ctm[(ndim, nsymbols)]
+        except KeyError:
+            msg = "no CTM dataset for 'ndim={}' and 'nsymbols={}'".format(
+                ndim, nsymbols
+            )
+            raise CTMDatasetNotFoundError(msg)
+        _, _shape = self.ctmname.split('-')[-2:]
         if shape is None:
             self.shape = tuple(int(x) for x in _shape[1:].split('x'))
         elif any([ x != shape[0] for x in shape ]):
             raise AttributeError("'shape' has to be equal in each dimension")
         else:
             self.shape = shape
-        self._ctm = get_ctm_dataset(self.ctmname)
-        self._sep = '-'
+        ctm, ctm_missing = get_ctm_dataset(self.ctmname)
+        self._ctm = ctm
+        self._ctm_missing = ctm_missing
+        self.warn_if_missing_ctm = warn_if_missing_ctm
 
     def partition(self, X, shape=None):
         """Standard partition stage function.
@@ -187,10 +211,14 @@ class BDMBase:
         for part in parts:
             sh = part.shape
             key = string_from_array(part)
+            _key = normalize_key(key)
             try:
-                cmx = self._ctm[sh][key]
+                cmx = self._ctm[sh][_key]
             except KeyError:
-                raise KeyError(f"CTM dataset does not contain object '{key}' of shape {sh}")
+                cmx = self._ctm_missing[sh]
+                if self.warn_if_missing_ctm:
+                    msg = f"CTM dataset does not contain object '{key}' of shape {sh}"
+                    warnings.warn(msg, BDMRuntimeWarning, stacklevel=2)
             yield key, cmx
 
     def aggregate(self, ctms):
@@ -218,7 +246,7 @@ class BDMBase:
         counter = Counter(ctms)
         return counter
 
-    def count_and_lookup(self, X):
+    def lookup_and_count(self, X):
         """Count parts and assign complexity values.
 
         Parameters
@@ -237,7 +265,7 @@ class BDMBase:
         --------
         >>> import numpy as np
         >>> bdm = BDMBase(ndim=1, shift=0)
-        >>> bdm.count_and_lookup(np.ones((12, ), dtype=int)) # doctest: +FLOAT_CMP
+        >>> bdm.lookup_and_count(np.ones((12, ), dtype=int)) # doctest: +FLOAT_CMP
         Counter({('111111111111', 25.610413747641715): 1})
         """
         parts = self.partition(X)
@@ -271,7 +299,7 @@ class BDMBase:
         bdm = 0
         for key, n in counter.items():
             _, ctm = key
-            bdm += ctm + np.log2(n)
+            bdm += ctm + log2(n)
         return bdm
 
     def bdm(self, X, raise_if_zero=True):
@@ -293,6 +321,10 @@ class BDMBase:
 
         Raises
         ------
+        TypeError
+            If `X` is not an integer array.
+        ValueError
+            If `X` has more than `nsymbols` unique values.
         ValueError
             If computed BDM value is 0 and `raise_if_zero` is ``True``.
 
@@ -303,46 +335,17 @@ class BDMBase:
         >>> bdm.bdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         25.176631293734488
         """
-        counter = self.count_and_lookup(X)
+        if not issubclass(X.dtype.type, np.integer):
+            raise TypeError("'X' has to be an integer array")
+        if np.unique(X).size > self.nsymbols:
+            raise ValueError("'X' has more than {} unique symbols".format(
+                self.nsymbols
+            ))
+        counter = self.lookup_and_count(X)
         cmx = self.compute_bdm(counter)
         if raise_if_zero and cmx == 0:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
         return cmx
-
-    def nbdm(self, X, raise_if_zero=True):
-        """Normalized BDM.
-
-        Parameters
-        ----------
-        X : array_like
-            Dataset representation as a :py:class:`numpy.ndarray`.
-            Number of axes must agree with the `ndim` attribute.
-        raise_if_zero: bool
-            Should error be raised if BDM value is zero.
-            Zero value indicates that a dataset could have incorrect dimensions.
-
-        Returns
-        -------
-        float
-            Normalized approximate algorithmic complexity.
-
-        Raises
-        ------
-        ValueError
-            If computed BDM value is 0 and `raise_if_zero` is ``True``.
-
-        Examples
-        --------
-        >>> import numpy as np
-        >>> bdm = BDMBase(ndim=2, shift=0)
-        >>> bdm.nbdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
-        0.0
-        """
-        min_bdm = self.bdm(make_min_data(X.shape), raise_if_zero=raise_if_zero)
-        max_bdm = self.bdm(make_max_data(X.shape, self.shape, self._ctm),
-                           raise_if_zero=raise_if_zero)
-        bdm = self.bdm(X, raise_if_zero=raise_if_zero)
-        return (bdm - min_bdm) / (max_bdm - min_bdm)
 
     def compute_ent(self, *counters):
         """Compute block entropy from counter.
@@ -395,8 +398,95 @@ class BDMBase:
         >>> bdm.ent(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         0.0
         """
-        counter = self.count_and_lookup(X)
+        counter = self.lookup_and_count(X)
         return self.compute_ent(counter)
+
+    def _cycle_parts(self, shape):
+        """Cycle over all possible dataset parts sorted by complexity."""
+
+        def rep(part):
+            key, cmx = part
+            n = len(set(key))
+            k = factorial(self.nsymbols) / factorial(self.nsymbols - n)
+            return repeat((key, cmx), int(k))
+
+        parts = chain.from_iterable(map(rep, self._ctm[shape].items()))
+        return cycle(enumerate(parts))
+
+    def _get_counter_dct(self, shape):
+        cycle_dct = {}
+        counter_dct = defaultdict(Counter)
+        for part in self.partition(np.zeros(shape, dtype=np.uint8)):
+            if part.shape not in cycle_dct:
+                cycle_dct[part.shape] = self._cycle_parts(part.shape)
+            idx, kv = next(cycle_dct[part.shape])
+            _, cmx = kv
+            counter_dct[part.shape].update(((idx, cmx),))
+        return counter_dct
+
+    def _get_max_bdm(self, shape):
+        counter_dct = self._get_counter_dct(shape)
+        max_bdm = 0
+        for dct in counter_dct.values():
+            for c, n in dct.items():
+                _, cmx = c
+                max_bdm += cmx + log2(n)
+        return max_bdm
+
+    def _get_min_bdm(self, shape):
+        return self.bdm(np.zeros(shape, dtype=np.uint8))
+
+    def _get_max_ent(self, shape):
+        counter_dct = self._get_counter_dct(shape)
+        parts_count = Counter()
+        for dct in counter_dct.values():
+            parts_count.update(idx for idx, _ in dct)
+        return self.compute_ent(parts_count)
+
+    def _get_min_ent(self, shape):
+        return self.ent(np.zeros(shape, dtype=np.uint8))
+
+    def nbdm(self, X, raise_if_zero=True):
+        """Normalized BDM.
+
+        Parameters
+        ----------
+        X : array_like
+            Dataset representation as a :py:class:`numpy.ndarray`.
+            Number of axes must agree with the `ndim` attribute.
+        raise_if_zero: bool
+            Should error be raised if BDM value is zero.
+            Zero value indicates that a dataset could have incorrect dimensions.
+
+        Returns
+        -------
+        float
+            Normalized approximate algorithmic complexity.
+
+        Raises
+        ------
+        TypeError
+            If `X` is not an integer array.
+        ValueError
+            If `X` has more than `nsymbols` unique values.
+        ValueError
+            If computed BDM value is 0 and `raise_if_zero` is ``True``.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> bdm = BDMBase(ndim=2, shift=0)
+        >>> bdm.nbdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
+        0.0
+        >>> X = np.array([0,0,0,1,1,0,1,0,0,1,1,1], dtype=int)
+        >>> bdm = BDMIgnore(ndim=1)
+        >>> bdm.nbdm(X) # doctest: +FLOAT_CMP
+        1.0
+        """
+        min_bdm = self._get_min_bdm(X.shape)
+        max_bdm = self._get_max_bdm(X.shape)
+        bdm = self.bdm(X, raise_if_zero=raise_if_zero)
+        return (bdm - min_bdm) / (max_bdm - min_bdm)
 
     def nent(self, X):
         """Normalized block entropy of a dataset.
@@ -419,8 +509,8 @@ class BDMBase:
         >>> bdm.nent(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         0.0
         """
-        min_ent = self.ent(make_min_data(X.shape))
-        max_ent = self.ent(make_max_data(X.shape, self.shape, self._ctm))
+        min_ent = self._get_min_ent(X.shape)
+        max_ent = self._get_max_ent(X.shape)
         ent = self.ent(X)
         return (ent - min_ent) / (max_ent - min_ent)
 
@@ -434,9 +524,10 @@ class BDMIgnore(BDMBase):
     """
     boundary_condition = 'ignore'
 
-    def __init__(self, ndim, shape=None, ctmname=None):
+    def __init__(self, ndim, shape=None, ctmname=None, nsymbols=2):
         """Initialization method."""
-        super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname)
+        super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname,
+                         nsymbols=nsymbols)
 
     def partition(self, X, shape=None):
         """Partition with ignore leftovers boundary condition.
@@ -475,9 +566,10 @@ class BDMRecursive(BDMBase):
     """
     boundary_condition = 'recursive'
 
-    def __init__(self, ndim, min_length, shape=None, ctmname=None):
+    def __init__(self, ndim, min_length, shape=None, ctmname=None, nsymbols=2):
         """Initialization method."""
-        super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname)
+        super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname,
+                         nsymbols=nsymbols)
         self.min_length = min_length
 
     def partition(self, X, shape=None):
