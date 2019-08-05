@@ -261,5 +261,5 @@ def get_ctm_dataset(name):
         dct[key] = OrderedDict(sorted(o.items(), key=lambda x: x[1], reverse=True))
     missing = {}
     for sh, cmx in dct.items():
-        missing[sh] = np.mean(list(cmx.values()))
+        missing[sh] = np.max(list(cmx.values())) + 1
     return dct, missing
