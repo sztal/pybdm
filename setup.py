@@ -41,8 +41,6 @@ setup(
         'pytest',
         'pylint',
         'pytest-pylint',
-        'pytest-profiling',
-        'pytest-benchmark',
         'pytest-doctestplus',
         'coverage',
         'joblib'
