@@ -413,10 +413,10 @@ class BDMBase:
         parts = chain.from_iterable(map(rep, self._ctm[shape].items()))
         return cycle(enumerate(parts))
 
-    def _get_counter_dct(self, X):
+    def _get_counter_dct(self, shape):
         cycle_dct = {}
         counter_dct = defaultdict(Counter)
-        for part in self.partition(X):
+        for part in self.partition(np.zeros(shape, dtype=np.uint8)):
             if part.shape not in cycle_dct:
                 cycle_dct[part.shape] = self._cycle_parts(part.shape)
             idx, kv = next(cycle_dct[part.shape])
@@ -424,8 +424,8 @@ class BDMBase:
             counter_dct[part.shape].update(((idx, cmx),))
         return counter_dct
 
-    def _get_max_bdm(self, X):
-        counter_dct = self._get_counter_dct(X)
+    def _get_max_bdm(self, shape):
+        counter_dct = self._get_counter_dct(shape)
         max_bdm = 0
         for dct in counter_dct.values():
             for c, n in dct.items():
@@ -433,18 +433,18 @@ class BDMBase:
                 max_bdm += cmx + log2(n)
         return max_bdm
 
-    def _get_min_bdm(self, X):
-        return self.bdm(np.zeros_like(X, dtype=np.uint8))
+    def _get_min_bdm(self, shape):
+        return self.bdm(np.zeros(shape, dtype=np.uint8))
 
-    def _get_min_ent(self, X):
-        return self.ent(np.zeros_like(X, dtype=np.uint8))
-
-    def _get_max_ent(self, X):
-        counter_dct = self._get_counter_dct(X)
+    def _get_max_ent(self, shape):
+        counter_dct = self._get_counter_dct(shape)
         parts_count = Counter()
         for dct in counter_dct.values():
             parts_count.update(idx for idx, _ in dct)
         return self.compute_ent(parts_count)
+
+    def _get_min_ent(self, shape):
+        return self.ent(np.zeros(shape, dtype=np.uint8))
 
     def nbdm(self, X, raise_if_zero=True):
         """Normalized BDM.
@@ -483,8 +483,8 @@ class BDMBase:
         >>> bdm.nbdm(X) # doctest: +FLOAT_CMP
         1.0
         """
-        min_bdm = self._get_min_bdm(X)
-        max_bdm = self._get_max_bdm(X)
+        min_bdm = self._get_min_bdm(X.shape)
+        max_bdm = self._get_max_bdm(X.shape)
         bdm = self.bdm(X, raise_if_zero=raise_if_zero)
         return (bdm - min_bdm) / (max_bdm - min_bdm)
 
@@ -509,8 +509,8 @@ class BDMBase:
         >>> bdm.nent(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         0.0
         """
-        min_ent = self._get_min_ent(X)
-        max_ent = self._get_max_ent(X)
+        min_ent = self._get_min_ent(X.shape)
+        max_ent = self._get_max_ent(X.shape)
         ent = self.ent(X)
         return (ent - min_ent) / (max_ent - min_ent)
 
