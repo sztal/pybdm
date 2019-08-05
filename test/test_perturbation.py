@@ -7,6 +7,7 @@ from pytest import approx
 import numpy as np
 from bdm.bdm import BDMBase
 from bdm.algorithms import PerturbationExperiment
+from bdm.utils import prod
 
 
 @pytest.fixture(scope='function')
@@ -215,7 +216,7 @@ class TestPerturbationExperiment:
         X0 = perturbation.X.copy()
         output = perturbation.run(idx, values, keep_changes=keep_changes)
         if idx is None:
-            N_changes = np.multiply.reduce(X0.shape)
+            N_changes = prod(X0.shape)
         else:
             N_changes = idx.shape[0]
         assert output.shape[0] == N_changes

@@ -20,7 +20,7 @@ from itertools import cycle, repeat, chain
 import numpy as np
 from .utils import get_ctm_dataset, slice_dataset
 from .encoding import string_from_array, normalize_key
-from .exceptions import BDMRuntimeWarning
+from .exceptions import BDMRuntimeWarning, CTMDatasetNotFoundError
 
 
 class BDMBase:
@@ -120,7 +120,13 @@ class BDMBase:
         self.ndim = ndim
         self.shift = shift
         self.nsymbols = nsymbols
-        self.ctmname = ctmname if ctmname else self._ndim_to_ctm[(ndim, nsymbols)]
+        try:
+            self.ctmname = ctmname if ctmname else self._ndim_to_ctm[(ndim, nsymbols)]
+        except KeyError:
+            msg = "no CTM dataset for 'ndim={}' and 'nsymbols={}'".format(
+                ndim, nsymbols
+            )
+            raise CTMDatasetNotFoundError(msg)
         _, _shape = self.ctmname.split('-')[-2:]
         if shape is None:
             self.shape = tuple(int(x) for x in _shape[1:].split('x'))

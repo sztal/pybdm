@@ -7,6 +7,13 @@ import numpy as np
 from .ctmdata import CTM_DATASETS as _ctm_datasets, __name__ as _ctmdata_path
 
 
+def prod(seq):
+    mult = 1
+    for x in seq:
+        mult *= x
+    return mult
+
+
 def get_reduced_shape(X, shape, shift=0, size_only=True):
     """Get shape of a reduced dataset.
 
@@ -90,7 +97,7 @@ def get_reduced_shape(X, shape, shift=0, size_only=True):
     else:
         r_shape = tuple(int(x-p+1) for x, p in zip(X.shape, shape))
     if size_only:
-        return int(np.multiply.reduce(r_shape))
+        return int(prod(r_shape))
     return r_shape
 
 def get_reduced_shape_array(X, shape):
@@ -151,14 +158,14 @@ def get_reduced_idx(i, shape):
     >>> get_reduced_idx(2, (1, 4))
     (0, 2)
     """
-    if i >= int(np.multiply.reduce(shape)):
+    if i >= int(prod(shape)):
         raise IndexError("'i' is beyond the provided shape")
     elif i < 0:
         raise IndexError("'i' has to be non-zero")
     K = len(shape)
     r_idx = tuple(
-        (i % int(np.multiply.reduce(shape[k:K]))) //
-        int(np.multiply.reduce(shape[(k+1):K]))
+        (i % int(prod(shape[k:K]))) //
+        int(prod(shape[(k+1):K]))
         for k in range(K)
     )
     return r_idx
@@ -202,7 +209,7 @@ def slice_dataset(X, shape, shift=0):
             "dataset and slice shape does not have the same number of axes"
         )
     r_shape = get_reduced_shape(X, shape, shift=shift, size_only=False)
-    n_parts = int(np.multiply.reduce(r_shape))
+    n_parts = int(prod(r_shape))
     width = shape[0]
     slice_shift = shift if shift > 0 else width
     for i in range(n_parts):

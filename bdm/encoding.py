@@ -14,6 +14,7 @@ finite alphabet of symbols can be uniquely mapped to an integer code.
 """
 from collections import deque
 import numpy as np
+from .utils import prod
 
 
 def array_from_string(x, shape, cast_to=int):
@@ -194,7 +195,7 @@ def decode_array(code, shape, base=2, **kwds):
     array_like
         *Numpy* array.
     """
-    length = np.multiply.reduce(shape)
+    length = prod(shape)
     seq = decode_sequence(code, base=base, min_length=length)
     if seq.size > length:
         raise ValueError(f"{code} does not encode array of shape {shape}")
