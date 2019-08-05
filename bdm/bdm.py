@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 """Block Decomposition Method
 
 `BDM` class provides a top-level interface for configuring an instance
@@ -217,7 +218,9 @@ class BDMBase:
             except KeyError:
                 cmx = self._ctm_missing[sh]
                 if self.warn_if_missing_ctm:
-                    msg = f"CTM dataset does not contain object '{key}' of shape {sh}"
+                    msg = "CTM dataset does not contain object '{}' of shape {}".format(
+                        key, sh
+                    )
                     warnings.warn(msg, BDMRuntimeWarning, stacklevel=2)
             yield key, cmx
 

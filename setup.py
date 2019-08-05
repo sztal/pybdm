@@ -26,7 +26,7 @@ setup(
     version='0.0.0',
     description='Python implementation of block decomposition method for approximating algorithmic complexity.',
     long_description=readme + '\n\n' + doclink + '\n\n' + history,
-    author='AlgoDyn Development Team',
+    author='Szymon Talaga',
     maintainer='Szymon Talaga',
     maintainer_email='stalaga@protonmail.com',
     url='https://github.com/sztal/pybdm',
@@ -38,12 +38,13 @@ setup(
     include_package_data=True,
     setup_requires=['pytest-runner'],
     tests_require=[
-        'pytest',
-        'pylint',
-        'pytest-pylint',
-        'pytest-doctestplus',
-        'coverage',
-        'joblib'
+        'pylint>=2.1.1',
+        'pytest>=3.5.1',
+        'pytest-pylint>=0.12.2',
+        'pytest-doctestplus>=0.2.0',
+        'coverage>=4.5.1',
+        'tox-conda>=0.2.0',
+        'joblib>=0.13.0'
     ],
     test_suite='tests',
     install_requires=[
