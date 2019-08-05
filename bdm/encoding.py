@@ -70,9 +70,7 @@ def string_from_array(arr):
     >>> string_from_array(np.array([[1,0], [3,4]]))
     '1034'
     """
-    x = np.apply_along_axis(''.join, arr.ndim - 1, arr.astype(str))
-    x = ''.join(np.ravel(x))
-    return x
+    return ''.join(map(str, arr.flat))
 
 def encode_sequence(seq, base=2):
     """Encode sequence of integer-symbols.
@@ -263,13 +261,10 @@ def normalize_key(key):
     """
     dct = {}
     counter = 0
-
-    def _normalize(s):
-        nonlocal dct
-        nonlocal counter
-        if s not in dct:
-            dct[s] = counter
+    norm_key = ''
+    for x in key:
+        if x not in dct:
+            dct[x] = str(counter)
             counter += 1
-        return str(dct[s])
-
-    return ''.join(_normalize(s) for s in key)
+        norm_key += dct[x]
+    return norm_key
