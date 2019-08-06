@@ -39,7 +39,7 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # PyLint
-pylintrc
+# pylintrc
 
 # Unit test / coverage reports / benchmarks / profiling
 prof/
