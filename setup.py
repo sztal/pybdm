@@ -43,6 +43,7 @@ setup(
         'pytest-pylint>=0.12.2',
         'pytest-doctestplus>=0.2.0',
         'coverage>=4.5.1',
+        'codecov>=2.0.15',
         'pytest-cov>=2.7.1',
         'tox-conda>=0.2.0',
         'joblib>=0.13.0'

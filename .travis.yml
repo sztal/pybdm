@@ -5,7 +5,7 @@ language: python
 python:
   - "3.7"
   - "3.6"
-  - "3.5"
+#  - "3.5"
 
 # command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install:
@@ -14,4 +14,7 @@ install:
 
 # command to run tests, e.g. python setup.py test
 script:
-  - pytest --slow
+  - pytest --slow --cov-report term --cov
+
+after_success:
+  - codecov
