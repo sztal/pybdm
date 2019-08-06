@@ -21,7 +21,8 @@ from itertools import cycle, repeat, chain
 import numpy as np
 from .utils import get_ctm_dataset, slice_dataset
 from .encoding import string_from_array, normalize_key
-from .exceptions import BDMRuntimeWarning, CTMDatasetNotFoundError
+from .exceptions import BDMRuntimeWarning
+from .exceptions import CTMDatasetNotFoundError, BDMConfigurationError
 
 
 class BDMBase:
@@ -39,12 +40,14 @@ class BDMBase:
         Shift value for the partition algorithm.
         If ``0`` then datasets are sliced into non-overlapping parts.
         If ``1`` then datasets are sliced into overlapping parts.
+    shape : tuple
+        Shape of slices.  If ``None`` then biggest shape supported
+        by the selected CTM dataset is used.
     nsymbols : int
         Number of symbols in the alphabet.
-    shape : tuple
-        Shape of slices.
     ctmname : str
-        Name of the CTM dataset.
+        Name of the CTM dataset. If ``None`` then a CTM dataset is selected
+        automatically based on `ndim` and `nsymbols`.
     warn_if_missing_ctm : bool
         Should ``BDMRuntimeWarning`` be sent in case there is missing CTM value.
         Some CTM values may be missing for larger alphabets as it is
@@ -95,6 +98,16 @@ class BDMBase:
     `BDMBase` should not be used for actual computations.
     It is meant to serve as a base class for extending
     and implementing particular boundary conditions.
+
+    Raises
+    ------
+    AttributeError
+        If 'shift' is not ``0`` or ``1``.
+    AttributeError
+        If parts' `shape` is not equal in each dimension.
+    CTMDatasetNotFoundError
+        If there is not CTM dataset for a combination of `ndim` and `nsymbols`
+        or a given `ctmname`.
     """
     _ndim_to_ctm = {
         # 1D datasets
@@ -108,20 +121,13 @@ class BDMBase:
     }
     boundary_condition = 'none'
 
-    def __init__(self, ndim, shift, shape=None, ctmname=None, nsymbols=2,
+    def __init__(self, ndim, shift, shape=None, nsymbols=2, ctmname=None,
                  warn_if_missing_ctm=True):
-        """Initialization method.
-
-        Raises
-        ------
-        AttributeError
-            If parts' `shape` is not equal in each dimension.
-        """
+        """Initialization method."""
         if shift not in (0, 1):
-            raise AttributeError("'shift' supports only values of `0` and `1`")
+            raise BDMConfigurationError("'shift' supports only values of `0` and `1`")
         self.ndim = ndim
         self.shift = shift
-        self.nsymbols = nsymbols
         try:
             self.ctmname = ctmname if ctmname else self._ndim_to_ctm[(ndim, nsymbols)]
         except KeyError:
@@ -129,11 +135,17 @@ class BDMBase:
                 ndim, nsymbols
             )
             raise CTMDatasetNotFoundError(msg)
-        _, _shape = self.ctmname.split('-')[-2:]
+        try:
+            nsymbols, _shape = self.ctmname.split('-')[-2:]
+        except ValueError:
+            msg = "incorrect 'ctmname'; it should be in format " + \
+                "'name-b<nsymbols>-d<shape>'"
+            raise BDMConfigurationError(msg)
+        self.nsymbols = int(nsymbols[1:])
         if shape is None:
             self.shape = tuple(int(x) for x in _shape[1:].split('x'))
         elif any([ x != shape[0] for x in shape ]):
-            raise AttributeError("'shape' has to be equal in each dimension")
+            raise BDMConfigurationError("'shape' has to be equal in each dimension")
         else:
             self.shape = shape
         ctm, ctm_missing = get_ctm_dataset(self.ctmname)
@@ -201,6 +213,12 @@ class BDMBase:
         ------
         KeyError
             If key of an object can not be found in the reference CTM lookup table.
+
+        Warns
+        -----
+        BDMRuntimeWarning
+            If ``warn_if_missing_ctm=True`` and there is no precomputed CTM
+            value for a part during the lookup stage.
 
         Examples
         --------
@@ -526,10 +544,11 @@ class BDMIgnore(BDMBase):
     __doc__ += BDMBase.__doc__
     boundary_condition = 'ignore'
 
-    def __init__(self, ndim, shape=None, ctmname=None, nsymbols=2):
+    def __init__(self, ndim, shape=None, nsymbols=2, ctmname=None,
+                 warn_if_missing_ctm=True):
         """Initialization method."""
         super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname,
-                         nsymbols=nsymbols)
+                         nsymbols=nsymbols, warn_if_missing_ctm=warn_if_missing_ctm)
 
     def partition(self, X, shape=None):
         """Partition with ignore leftovers boundary condition.
@@ -568,10 +587,11 @@ class BDMRecursive(BDMBase):
     __doc__ += BDMBase.__doc__
     boundary_condition = 'recursive'
 
-    def __init__(self, ndim, min_length, shape=None, ctmname=None, nsymbols=2):
+    def __init__(self, ndim, min_length, shape=None, nsymbols=2, ctmname=None,
+                 warn_if_missing_ctm=True):
         """Initialization method."""
         super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname,
-                         nsymbols=nsymbols)
+                         nsymbols=nsymbols, warn_if_missing_ctm=warn_if_missing_ctm)
         self.min_length = min_length
 
     def partition(self, X, shape=None):
