@@ -55,6 +55,9 @@ class BDMBase:
         Missing CTM values are imputed with mean CTM complexities
         over all parts of a given shape.
 
+
+    Overview
+    --------
     Block decomposition method is implemented using the *split-apply-combine*
     pipeline approach. First a dataset is partitioned into parts with dimensions
     appropriate for a selected data dimensionality and corresponding
@@ -65,8 +68,8 @@ class BDMBase:
     so every step can be customized during the configuration of a `BDM` object
     or by subclassing.
 
-    Stage methods
-    -------------
+    **Stage methods**
+
     The *split-apply-combine* approach is implemented through
     stage methods. Stage methods contain the main logic
     of the *Block Decomposition Method* and its different flavours
@@ -106,7 +109,7 @@ class BDMBase:
     AttributeError
         If parts' `shape` is not equal in each dimension.
     CTMDatasetNotFoundError
-        If there is not CTM dataset for a combination of `ndim` and `nsymbols`
+        If there is no CTM dataset for a combination of `ndim` and `nsymbols`
         or a given `ctmname`.
     """
     _ndim_to_ctm = {
@@ -177,8 +180,9 @@ class BDMBase:
         AttributeError
             If parts' `shape` and dataset's shape have different numbers of axes.
 
-        Acknowledgments
-        ---------------
+
+        **Acknowledgments**
+
         Special thanks go to Paweł Weroński for the help with the design of
         the non-recursive *partition* algorithm.
 
@@ -540,8 +544,10 @@ class BDMBase:
 class BDMIgnore(BDMBase):
     """Block decomposition method with ignore boundary condition.
 
+    See Also
+    --------
+    BDMBase : base BDM class
     """
-    __doc__ += BDMBase.__doc__
     boundary_condition = 'ignore'
 
     def __init__(self, ndim, shape=None, nsymbols=2, ctmname=None,
@@ -553,9 +559,7 @@ class BDMIgnore(BDMBase):
     def partition(self, X, shape=None):
         """Partition with ignore leftovers boundary condition.
 
-        See Also
-        --------
-        For detailed documentation see :py:meth:`bdm.bdm.BDMBase.partition`.
+        .. automethod:: BDMBase.partition
 
         Examples
         --------
@@ -581,10 +585,10 @@ class BDMRecursive(BDMBase):
         In case of multidimensional objects it specifies minimum
         length of any single dimension.
 
-    Other arguments are described below.
-
+    See Also
+    --------
+    BDMBase : base BDM class
     """
-    __doc__ += BDMBase.__doc__
     boundary_condition = 'recursive'
 
     def __init__(self, ndim, min_length, shape=None, nsymbols=2, ctmname=None,
@@ -597,9 +601,7 @@ class BDMRecursive(BDMBase):
     def partition(self, X, shape=None):
         """Partition algorithm with a shrinking parts' size.
 
-        See Also
-        --------
-        For detailed documentation see :py:meth:`bdm.bdm.BDMBase.partition`.
+        .. automethod:: BDMBase.partition
 
         Examples
         --------

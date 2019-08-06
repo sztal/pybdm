@@ -16,7 +16,7 @@ Datasets
     6-symbols strings of length from 1 to 12.
 :``ctm-b9-d12.pkl``:
     9-symbols strings of length from 1 to 12.
-:``ctm-b2-d4x4.pickle``:
+:``ctm-b2-d4x4.pkl``:
     Square binary matrices of width from 1 to 4.
 """
 
