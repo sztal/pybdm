@@ -14,7 +14,7 @@ install:
 
 # command to run tests, e.g. python setup.py test
 script:
-  - pytest --slow --cov-report term --cov
+  - pytest --slow --cov-report term --cov=bdm/ --cov=test/ --pylint
 
 after_success:
   - codecov

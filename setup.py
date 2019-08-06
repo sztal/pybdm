@@ -34,7 +34,7 @@ setup(
         *find_packages()
         #'bdm'
     ],
-    package_data={'bdm': ['resources/*.pickle']},
+    package_data={'bdm': ['resources/*.pkl']},
     include_package_data=True,
     setup_requires=['pytest-runner'],
     tests_require=[
