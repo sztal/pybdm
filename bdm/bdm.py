@@ -25,11 +25,32 @@ from .exceptions import BDMRuntimeWarning, CTMDatasetNotFoundError
 
 
 class BDMBase:
-    """Block decomposition method interface base class.
+    """Block decomposition method.
 
     Block decomposition method is dependent on a reference CTM dataset
     with precomputed algorithmic complexity for small objects of a given
     dimensionality approximated with the *Coding Theorem Method* (CTM).
+
+    Attributes
+    ----------
+    ndim : int
+        Number of dimensions of target dataset objects. Positive integer.
+    shift : {0, 1}
+        Shift value for the partition algorithm.
+        If ``0`` then datasets are sliced into non-overlapping parts.
+        If ``1`` then datasets are sliced into overlapping parts.
+    nsymbols : int
+        Number of symbols in the alphabet.
+    shape : tuple
+        Shape of slices.
+    ctmname : str
+        Name of the CTM dataset.
+    warn_if_missing_ctm : bool
+        Should ``BDMRuntimeWarning`` be sent in case there is missing CTM value.
+        Some CTM values may be missing for larger alphabets as it is
+        computationally infeasible to explore entire parts space.
+        Missing CTM values are imputed with mean CTM complexities
+        over all parts of a given shape.
 
     Block decomposition method is implemented using the *split-apply-combine*
     pipeline approach. First a dataset is partitioned into parts with dimensions
@@ -67,33 +88,13 @@ class BDMBase:
 
     Notes
     -----
-    Currently CTM reference datasets are computed only for binary sequences
-    of length up to 12 and binary 4-by-4 binary matrices.
+    Currently CTM values are computed only for 1D strings of length up to 12
+    elements based on alphabets with 2, 4, 5, 6 and 9 symbols as well as
+    for symmetric binary matrices of size up to 4-by-4.
 
     `BDMBase` should not be used for actual computations.
     It is meant to serve as a base class for extending
     and implementing particular boundary conditions.
-
-    Attributes
-    ----------
-    ndim : int
-        Number of dimensions of target dataset objects. Positive integer.
-    shift : {0, 1}
-        Shift value for the partition algorithm.
-        If ``0`` then datasets are sliced into non-overlapping parts.
-        If ``1`` then datasets are sliced into overlapping parts.
-    nsymbols : int
-        Number of symbols in the alphabet.
-    shape : tuple
-        Shape of slices.
-    ctmname : str
-        Name of the CTM dataset.
-    warn_if_missing_ctm : bool
-        Should ``BDMRuntimeWarning`` be sent in case there is missing CTM value.
-        Some CTM values may be missing for larger alphabets as it is
-        computationally infeasible to explore entire parts space.
-        Missing CTM values are imputed with mean CTM complexities
-        over all parts of a given shape.
     """
     _ndim_to_ctm = {
         # 1D datasets
@@ -521,10 +522,8 @@ class BDMBase:
 class BDMIgnore(BDMBase):
     """Block decomposition method with ignore boundary condition.
 
-    See Also
-    --------
-    For detailed documentation see :py:class:`bdm.bdm.BDMBase`.
     """
+    __doc__ += BDMBase.__doc__
     boundary_condition = 'ignore'
 
     def __init__(self, ndim, shape=None, ctmname=None, nsymbols=2):
@@ -563,10 +562,10 @@ class BDMRecursive(BDMBase):
         In case of multidimensional objects it specifies minimum
         length of any single dimension.
 
-    See Also
-    --------
-    For detailed documentation see :py:meth:`bdm.bdm.BDMBase.partition`.
+    Other arguments are described below.
+
     """
+    __doc__ += BDMBase.__doc__
     boundary_condition = 'recursive'
 
     def __init__(self, ndim, min_length, shape=None, ctmname=None, nsymbols=2):
