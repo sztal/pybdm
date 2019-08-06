@@ -26,6 +26,7 @@ clean-pyc:
 clean-misc:
 	find . -name '.benchmarks' -exec rm -rf {} +
 	find . -name '.pytest-cache' -exec rm -rf {} +
+	rm .coverage*
 
 lint:
 	py.test --pylint -m pylint

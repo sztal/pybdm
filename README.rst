@@ -5,9 +5,11 @@ PyBDM: Python interface to the *Block Deincomposition Method*
 .. image:: https://badge.fury.io/py/pybdm.png
     :target: http://badge.fury.io/py/pybdm
 
-.. image:: https://travis-ci.org/sztal/pybdm.png?branch=master
+.. image:: https://travis-ci.org/sztal/pybdm.svg?branch=master
     :target: https://travis-ci.org/sztal/pybdm
 
+.. image:: https://codecov.io/gh/sztal/pybdm/branch/master/graph/badge.svg?branch=master
+    :target: https://codecov.io/gh/sztal/pybdm
 
 The Block Decomposition Method (BDM) approximates algorithmic complexity
 of a dataset of arbitrary size, that is, the length of the shortest computer
