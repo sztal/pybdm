@@ -110,10 +110,10 @@ def encode_sequence(seq, base=2):
     if seq.dtype != np.int:
         raise TypeError("'seq' has to be of integer dtype")
     if not (seq >= 0).all():
-        raise ValueError("'seq' has to consist of non-negative integers")
+        raise ValueError("'seq' has to conisist of non-negative integers")
     proper_values = np.arange(base)
     if not np.isin(seq, proper_values).all():
-        raise ValueError(f"There are symbol codes greater than {base-1}")
+        raise ValueError("There are symbol codes greater than {}".format(base-1))
     code = 0
     for i, x in enumerate(reversed(seq)):
         if x > 0:
@@ -196,7 +196,7 @@ def decode_array(code, shape, base=2, **kwds):
     length = prod(shape)
     seq = decode_sequence(code, base=base, min_length=length)
     if seq.size > length:
-        raise ValueError(f"{code} does not encode array of shape {shape}")
+        raise ValueError("{} does not encode array of shape {}".format(code, shape))
     arr = seq.reshape(shape, **kwds)
     return arr
 

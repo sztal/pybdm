@@ -87,7 +87,7 @@ def get_reduced_shape(X, shape, shift=0, size_only=True):
     9
     """
     if len(set(shape)) != 1:
-        raise AttributeError(f"Partition shape is not symmetric {shape}")
+        raise AttributeError("Partition shape is not symmetric {}".format(shape))
     if len(shape) != X.ndim:
         X = X.squeeze()
         if len(shape) != X.ndim:
@@ -160,7 +160,7 @@ def get_reduced_idx(i, shape):
     """
     if i >= int(prod(shape)):
         raise IndexError("'i' is beyond the provided shape")
-    elif i < 0:
+    if i < 0:
         raise IndexError("'i' has to be non-zero")
     K = len(shape)
     r_idx = tuple(
@@ -253,7 +253,7 @@ def get_ctm_dataset(name):
         If non-existent CTM dataset is requested.
     """
     if name not in _ctm_datasets:
-        raise ValueError(f"There is no {name} CTM dataset")
+        raise ValueError("There is no {} CTM dataset".format(name))
     with resource_stream(_ctmdata_path, _ctm_datasets[name]) as stream:
         dct = pickle.load(stream)
     for key in dct:

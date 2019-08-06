@@ -6,40 +6,56 @@ Subpackages
 
 .. toctree::
 
-    bdm.ctmdata
+   bdm.ctmdata
 
 Submodules
 ----------
 
-bdm.base module
----------------
+bdm.algorithms module
+---------------------
 
-.. automodule:: bdm.base
-    :members:
-    :undoc-members:
-    :show-inheritance:
+.. automodule:: bdm.algorithms
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+bdm.bdm module
+--------------
+
+.. automodule:: bdm.bdm
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bdm.encoding module
 -------------------
 
 .. automodule:: bdm.encoding
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+bdm.exceptions module
+---------------------
+
+.. automodule:: bdm.exceptions
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bdm.utils module
 ----------------
 
 .. automodule:: bdm.utils
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 
 Module contents
 ---------------
 
 .. automodule:: bdm
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
