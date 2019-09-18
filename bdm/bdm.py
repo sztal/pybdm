@@ -328,7 +328,7 @@ class BDMBase:
             bdm += ctm + log2(n)
         return bdm
 
-    def bdm(self, X, normalize=False, raise_if_zero=True):
+    def bdm(self, X, normalize=False, raise_if_zero=True, check_data=True):
         """Approximate complexity of a dataset.
 
         Parameters
@@ -338,9 +338,12 @@ class BDMBase:
             Number of axes must agree with the `ndim` attribute.
         normalize : bool
             Should BDM be normalized to be in the [0, 1] range.
-        raise_if_zero: bool
+        raise_if_zero : bool
             Should error be raised if BDM value is zero.
             Zero value indicates that a dataset could have incorrect dimensions.
+        check_data : bool
+            Should data format be checked.
+            May be disabled to gain some speed when calling multiple times.
 
         Returns
         -------
@@ -350,9 +353,13 @@ class BDMBase:
         Raises
         ------
         TypeError
-            If `X` is not an integer array.
+            If `X` is not an integer array and `check_data=True`.
         ValueError
-            If `X` has more than `nsymbols` unique values.
+            If `X` has more than `nsymbols` unique values
+            and `check_data=True`.
+        ValueError
+            If `X` has symbols outside of the ``0`` to `nsymbols-1` range
+            and `check_data=True`.
         ValueError
             If computed BDM value is 0 and `raise_if_zero` is ``True``.
 
@@ -363,12 +370,8 @@ class BDMBase:
         >>> bdm.bdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         25.176631293734488
         """
-        if not issubclass(X.dtype.type, np.integer):
-            raise TypeError("'X' has to be an integer array")
-        if np.unique(X).size > self.nsymbols:
-            raise ValueError("'X' has more than {} unique symbols".format(
-                self.nsymbols
-            ))
+        if check_data:
+            self._check_data(X)
         counter = self.lookup_and_count(X)
         cmx = self.compute_bdm(counter)
         if raise_if_zero and cmx == 0:
@@ -409,7 +412,7 @@ class BDMBase:
             ent -= p*np.log2(p)
         return ent
 
-    def ent(self, X, normalize=False):
+    def ent(self, X, normalize=False, check_data=True):
         """Block entropy of a dataset.
 
         Parameters
@@ -419,11 +422,25 @@ class BDMBase:
             Number of axes must agree with the `ndim` attribute.
         normalize : bool
             Should entropy be normalized to be in the [0, 1] range.
+        check_data : bool
+            Should data format be checked.
+            May be disabled to gain some speed when calling multiple times.
 
         Returns
         -------
         float
             Block entropy in base 2.
+
+        Raises
+        ------
+        TypeError
+            If `X` is not an integer array and `check_data=True`.
+        ValueError
+            If `X` has more than `nsymbols` unique values
+            and `check_data=True`.
+        ValueError
+            If `X` has symbols outside of the ``0`` to `nsymbols-1` range
+            and `check_data=True`.
 
         Examples
         --------
@@ -432,6 +449,8 @@ class BDMBase:
         >>> bdm.ent(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         0.0
         """
+        if check_data:
+            self._check_data(X)
         counter = self.lookup_and_count(X)
         ent = self.compute_ent(counter)
         if normalize:
@@ -439,6 +458,26 @@ class BDMBase:
             max_ent = self._get_max_ent(X.shape)
             ent = (ent - min_ent) / (max_ent - min_ent)
         return ent
+
+    def _check_data(self, X):
+        """Check if data is correctly formatted.
+
+        Symbols have to mapped to integers from ``0`` to `self.nsymbols-1`.
+        """
+        if not issubclass(X.dtype.type, np.integer):
+            raise TypeError("'X' has to be an integer array")
+        symbols = np.unique(X)
+        if symbols.size > self.nsymbols:
+            raise ValueError("'X' has more than {} unique symbols".format(
+                self.nsymbols
+            ))
+        valid_symbols = np.array([ _ for _ in range(self.nsymbols) ])
+        bad_symbols = symbols[~np.isin(symbols, valid_symbols)]
+        if bad_symbols.size > 0:
+            raise ValueError("'X' contains symbols outside of [0, {}]: {}".format(
+                str(self.nsymbols-1),
+                ", ".join(str(s) for s in bad_symbols)
+            ))
 
     def _cycle_parts(self, shape):
         """Cycle over all possible dataset parts sorted by complexity."""
