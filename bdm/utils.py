@@ -171,14 +171,90 @@ def get_reduced_idx(i, shape):
     )
     return r_idx
 
-def slice_dataset(X, shape, shift=0):
-    """Slice a dataset into *n* pieces.
+def iter_slices(X, shape, shift=0):
+    """Iter over slice indices of a dataset.
 
     Slicing is done in a way that ensures that only pieces
     on boundaries of the sliced dataset can have leftovers
     in regard to a specified shape.
     This is very important for proper computing of BDM in the context
     of parallel processing.
+
+    Parameters
+    ----------
+    X : array_like
+        Daataset represented as a *Numpy* array.
+    shape : tuple
+        Slice shape.
+    shift : int
+        Shift value for slicing.
+        Nonoverlaping slicing if non-positive.
+
+    Yields
+    ------
+    slice
+        Slice indices.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> X = np.ones((5, 3), dtype=int)
+    >>> [ x for x in iter_slices(X, (3, 3)) ]
+    [(slice(0, 3, None), slice(0, 3, None)), (slice(3, 5, None), slice(0, 3, None))]
+    """
+    if len(shape) != X.ndim:
+        raise AttributeError(
+            "dataset and slice shape does not have the same number of axes"
+        )
+    r_shape = get_reduced_shape(X, shape, shift=shift, size_only=False)
+    n_parts = int(prod(r_shape))
+    width = shape[0]
+    slice_shift = shift if shift > 0 else width
+    for i in range(n_parts):
+        r_idx = get_reduced_idx(i, r_shape)
+        if shift <= 0:
+            idx = tuple(
+                slice(k*width, min(k*width + slice_shift, s))
+                for s, k in zip(X.shape, r_idx)
+            )
+        else:
+            idx = tuple(
+                slice(k, min(k + width, s))
+                for s, k in zip(X.shape, r_idx)
+            )
+        yield idx
+
+def iter_part_shapes(X, shape, shift=0):
+    """Iterate over part shapes induced by slicing.
+
+    Parameters
+    ----------
+    X : array_like
+        Daataset represented as a *Numpy* array.
+    shape : tuple
+        Slice shape.
+    shift : int
+        Shift value for slicing.
+        Nonoverlaping slicing if non-positive.
+
+    Yields
+    ------
+    tuple
+        Part shapes.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> X = np.ones((5, 3), dtype=int)
+    >>> [ x for x in iter_part_shapes(X, (3, 3)) ]
+    [(3, 3), (2, 3)]
+    """
+    for idx in iter_slices(X, shape=shape, shift=shift):
+        part = tuple(s.stop - s.start for s in idx)
+        yield part
+
+def slice_dataset(X, shape, shift=0):
+    """Slice a dataset into *n* pieces.
 
     Parameters
     ----------
@@ -205,20 +281,7 @@ def slice_dataset(X, shape, shift=0):
            [1, 1, 1]]), array([[1, 1, 1],
            [1, 1, 1]])]
     """
-    if len(shape) != X.ndim:
-        raise AttributeError(
-            "dataset and slice shape does not have the same number of axes"
-        )
-    r_shape = get_reduced_shape(X, shape, shift=shift, size_only=False)
-    n_parts = int(prod(r_shape))
-    width = shape[0]
-    slice_shift = shift if shift > 0 else width
-    for i in range(n_parts):
-        r_idx = get_reduced_idx(i, r_shape)
-        if shift <= 0:
-            idx = tuple(slice(k*width, k*width + slice_shift) for k in r_idx)
-        else:
-            idx = tuple(slice(k, k + width) for k in r_idx)
+    for idx in iter_slices(X, shape=shape, shift=shift):
         yield X[idx]
 
 def list_ctm_datasets():
