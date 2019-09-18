@@ -235,9 +235,9 @@ class BDMBase:
         for part in parts:
             sh = part.shape
             key = string_from_array(part)
-            _key = normalize_key(key)
+            key_n = normalize_key(key)
             try:
-                cmx = self._ctm[sh][_key]
+                cmx = self._ctm[sh][key_n]
             except KeyError:
                 cmx = self._ctm_missing[sh]
                 if self.warn_if_missing_ctm:
