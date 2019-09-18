@@ -328,7 +328,7 @@ class BDMBase:
             bdm += ctm + log2(n)
         return bdm
 
-    def bdm(self, X, raise_if_zero=True):
+    def bdm(self, X, normalize=False, raise_if_zero=True):
         """Approximate complexity of a dataset.
 
         Parameters
@@ -336,6 +336,8 @@ class BDMBase:
         X : array_like
             Dataset representation as a :py:class:`numpy.ndarray`.
             Number of axes must agree with the `ndim` attribute.
+        normalize : bool
+            Should BDM be normalized to be in the [0, 1] range.
         raise_if_zero: bool
             Should error be raised if BDM value is zero.
             Zero value indicates that a dataset could have incorrect dimensions.
@@ -371,6 +373,10 @@ class BDMBase:
         cmx = self.compute_bdm(counter)
         if raise_if_zero and cmx == 0:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
+        if normalize:
+            min_cmx = self._get_min_bdm(X.shape)
+            max_cmx = self._get_max_bdm(X.shape)
+            cmx = (cmx - min_cmx) / (max_cmx - min_cmx)
         return cmx
 
     def compute_ent(self, *counters):
@@ -403,7 +409,7 @@ class BDMBase:
             ent -= p*np.log2(p)
         return ent
 
-    def ent(self, X):
+    def ent(self, X, normalize=False):
         """Block entropy of a dataset.
 
         Parameters
@@ -411,6 +417,8 @@ class BDMBase:
         X : array_like
             Dataset representation as a :py:class:`numpy.ndarray`.
             Number of axes must agree with the `ndim` attribute.
+        normalize : bool
+            Should entropy be normalized to be in the [0, 1] range.
 
         Returns
         -------
@@ -425,7 +433,12 @@ class BDMBase:
         0.0
         """
         counter = self.lookup_and_count(X)
-        return self.compute_ent(counter)
+        ent = self.compute_ent(counter)
+        if normalize:
+            min_ent = self._get_min_ent(X.shape)
+            max_ent = self._get_max_ent(X.shape)
+            ent = (ent - min_ent) / (max_ent - min_ent)
+        return ent
 
     def _cycle_parts(self, shape):
         """Cycle over all possible dataset parts sorted by complexity."""
@@ -471,74 +484,6 @@ class BDMBase:
 
     def _get_min_ent(self, shape):
         return self.ent(np.zeros(shape, dtype=np.uint8))
-
-    def nbdm(self, X, raise_if_zero=True):
-        """Normalized BDM.
-
-        Parameters
-        ----------
-        X : array_like
-            Dataset representation as a :py:class:`numpy.ndarray`.
-            Number of axes must agree with the `ndim` attribute.
-        raise_if_zero: bool
-            Should error be raised if BDM value is zero.
-            Zero value indicates that a dataset could have incorrect dimensions.
-
-        Returns
-        -------
-        float
-            Normalized approximate algorithmic complexity.
-
-        Raises
-        ------
-        TypeError
-            If `X` is not an integer array.
-        ValueError
-            If `X` has more than `nsymbols` unique values.
-        ValueError
-            If computed BDM value is 0 and `raise_if_zero` is ``True``.
-
-        Examples
-        --------
-        >>> import numpy as np
-        >>> bdm = BDMBase(ndim=2, shift=0)
-        >>> bdm.nbdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
-        0.0
-        >>> X = np.array([0,0,0,1,1,0,1,0,0,1,1,1], dtype=int)
-        >>> bdm = BDMIgnore(ndim=1)
-        >>> bdm.nbdm(X) # doctest: +FLOAT_CMP
-        1.0
-        """
-        min_bdm = self._get_min_bdm(X.shape)
-        max_bdm = self._get_max_bdm(X.shape)
-        bdm = self.bdm(X, raise_if_zero=raise_if_zero)
-        return (bdm - min_bdm) / (max_bdm - min_bdm)
-
-    def nent(self, X):
-        """Normalized block entropy of a dataset.
-
-        Parameters
-        ----------
-        X : array_like
-            Dataset representation as a :py:class:`numpy.ndarray`.
-            Number of axes must agree with the `ndim` attribute.
-
-        Returns
-        -------
-        float
-            Normalized block entropy in base 2.
-
-        Examples
-        --------
-        >>> import numpy as np
-        >>> bdm = BDMBase(ndim=2, shift=0)
-        >>> bdm.nent(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
-        0.0
-        """
-        min_ent = self._get_min_ent(X.shape)
-        max_ent = self._get_max_ent(X.shape)
-        ent = self.ent(X)
-        return (ent - min_ent) / (max_ent - min_ent)
 
 
 class BDMIgnore(BDMBase):

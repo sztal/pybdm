@@ -133,7 +133,7 @@ class TestBDM:
         ], dtype=int), 0.8924514180488615)
     ])
     def test_nbdm_d1(self, bdm_d1, X, expected):
-        output = bdm_d1.nbdm(X)
+        output = bdm_d1.bdm(X, normalize=True)
         assert output == approx(expected)
 
     @pytest.mark.parametrize('X,expected', [
@@ -141,7 +141,7 @@ class TestBDM:
         (np.array([[0,0,1,0],[1,0,0,1],[0,0,1,1],[1,0,1,0]], dtype=int), 0.6139131118181638)
     ])
     def test_nbdm_d2(self, bdm_d2, X, expected):
-        output = bdm_d2.nbdm(X)
+        output = bdm_d2.bdm(X, normalize=True)
         assert output == approx(expected)
 
     @pytest.mark.parametrize('X,expected', [
@@ -149,7 +149,7 @@ class TestBDM:
         (np.array([0 for i in range(12)]+[1 for i in range(12)], dtype=int), 1)
     ])
     def test_nent_d1(self, bdm_d1, X, expected):
-        output = bdm_d1.nent(X)
+        output = bdm_d1.ent(X, normalize=True)
         assert output == approx(expected)
 
     @pytest.mark.parametrize('X,expected', [
@@ -157,7 +157,7 @@ class TestBDM:
         (np.vstack((np.ones((4, 4), dtype=int), np.zeros((4, 4), dtype=int))), 1)
     ])
     def test_nent_d2(self, bdm_d2, X, expected):
-        output = bdm_d2.nent(X)
+        output = bdm_d2.ent(X, normalize=True)
         assert output == approx(expected)
 
     @pytest.mark.slow
