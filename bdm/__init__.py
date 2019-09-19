@@ -7,9 +7,9 @@ is described in
 :cite:`soler-toscano_calculating_2014` and
 :cite:`zenil_decomposition_2018`.
 """
-from .bdm import BDMIgnore, BDMRecursive
+from .bdm import BDM
+from .partitions import PartitionIgnore, PartitionRecursive, PartitionCorrelated
 from .algorithms import PerturbationExperiment
-BDM = BDMIgnore
 
 __author__ = 'AlgoDyn Development Team'
 __email__ = 'stalaga@protonmail.com'

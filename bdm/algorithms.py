@@ -81,8 +81,11 @@ class PerturbationExperiment:
             start = i - i % k
             end = start + k
             return slice(start, end)
-        shift = self.bdm.shift
-        shape = self.bdm.shape
+        try:
+            shift = self.bdm.boundary.shift
+        except AttributeError:
+            shift = 0
+        shape = self.bdm.boundary.shape
         if shift == 0:
             r_idx = tuple((k // l)*l for k, l in zip(idx, shape))
             idx = tuple(slice(k, k+l) for k, l in zip(r_idx, shape))

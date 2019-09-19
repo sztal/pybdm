@@ -12,20 +12,21 @@ is implemented in object-oriented fashion, an instance can be first configured
 properly and then it exposes a public method :py:meth:`bdm.BDM.bdm`
 for computing approximated complexity via BDM.
 """
-# pylint: disable=W0221
+# pylint: disable=protected-access
 import warnings
 from math import factorial, log2
 from collections import Counter, defaultdict
 from functools import reduce
 from itertools import cycle, repeat, chain
 import numpy as np
-from .utils import get_ctm_dataset, slice_dataset, iter_part_shapes
+from .utils import get_ctm_dataset
+from .partitions import PartitionIgnore, PartitionCorrelated
 from .encoding import string_from_array, normalize_key
 from .exceptions import BDMRuntimeWarning
 from .exceptions import CTMDatasetNotFoundError, BDMConfigurationError
 
 
-class BDMBase:
+class BDM:
     """Block decomposition method.
 
     Block decomposition method is dependent on a reference CTM dataset
@@ -36,15 +37,12 @@ class BDMBase:
     ----------
     ndim : int
         Number of dimensions of target dataset objects. Positive integer.
-    shift : {0, 1}
-        Shift value for the partition algorithm.
-        If ``0`` then datasets are sliced into non-overlapping parts.
-        If ``1`` then datasets are sliced into overlapping parts.
-    shape : tuple
-        Shape of slices.  If ``None`` then biggest shape supported
-        by the selected CTM dataset is used.
     nsymbols : int
         Number of symbols in the alphabet.
+    boundary : Partition class
+        Partition algorithm class object.
+        The class is called with the `shape` attribute is determined
+        automatically if not passed and other attributes passed via ``**kwds``.
     ctmname : str
         Name of the CTM dataset. If ``None`` then a CTM dataset is selected
         automatically based on `ndim` and `nsymbols`.
@@ -97,10 +95,6 @@ class BDMBase:
     Currently CTM values are computed only for 1D strings of length up to 12
     elements based on alphabets with 2, 4, 5, 6 and 9 symbols as well as
     for symmetric binary matrices of size up to 4-by-4.
-
-    `BDMBase` should not be used for actual computations.
-    It is meant to serve as a base class for extending
-    and implementing particular boundary conditions.
     """
     _ndim_to_ctm = {
         # 1D datasets
@@ -112,11 +106,18 @@ class BDMBase:
         # 2D datasets
         (2, 2): 'CTM-B2-D4x4',
     }
-    boundary_condition = 'none'
 
-    def __init__(self, ndim, shift, shape=None, nsymbols=2, ctmname=None,
-                 warn_if_missing_ctm=True):
+    def __init__(self, ndim, nsymbols=2, shape=None, boundary=PartitionIgnore,
+                 ctmname=None, warn_if_missing_ctm=True, **kwds):
         """Initialization method.
+
+        Parameters
+        ----------
+        shape : tuple
+            Part shape to be passed to the partition algorithm.
+            Used if a partition algorithm class is passed.
+        **kwds :
+            Other keyword arguments passed to a partition algorithm class.
 
         Raises
         ------
@@ -128,10 +129,7 @@ class BDMBase:
             If there is no CTM dataset for a combination of `ndim` and `nsymbols`
             or a given `ctmname`.
         """
-        if shift not in (0, 1):
-            raise BDMConfigurationError("'shift' supports only values of `0` and `1`")
         self.ndim = ndim
-        self.shift = shift
         try:
             self.ctmname = ctmname if ctmname else self._ndim_to_ctm[(ndim, nsymbols)]
         except KeyError:
@@ -147,29 +145,29 @@ class BDMBase:
             raise BDMConfigurationError(msg)
         self.nsymbols = int(nsymbols[1:])
         if shape is None:
-            self.shape = tuple(int(x) for x in _shape[1:].split('x'))
-        elif any([ x != shape[0] for x in shape ]):
+            shape = tuple(int(x) for x in _shape[1:].split('x'))
+        if any([ x != shape[0] for x in shape ]):
             raise BDMConfigurationError("'shape' has to be equal in each dimension")
-        else:
-            self.shape = shape
         ctm, ctm_missing = get_ctm_dataset(self.ctmname)
         self._ctm = ctm
         self._ctm_missing = ctm_missing
         self.warn_if_missing_ctm = warn_if_missing_ctm
+        self.boundary = boundary(shape=shape, **kwds)
 
-    def partition(self, X, shape=None):
+    def __repr__(self):
+        partition = str(self.boundary)[1:-1]
+        cn = self.__class__.__name__
+        return "<{}(ndim={}, nsymbols={}) with {}>".format(
+            cn, self.ndim, self.nsymbols, partition
+        )
+
+    def partition(self, X):
         """Standard partition stage function.
 
         Parameters
         ----------
         x : array_like
             Dataset of arbitrary dimensionality represented as a *Numpy* array.
-        shape : tuple
-            Dataset parts' shape.
-            Use `shape` defined on the object if ``None``.
-            This argument should not be usually used.
-            It is meant to be used only in implementations
-            of specialized recursive partition algorithms.
 
         Yields
         ------
@@ -189,15 +187,13 @@ class BDMBase:
 
         Examples
         --------
-        >>> bdm = BDMBase(ndim=2, shift=0, shape=(2, 2))
-        >>> [ x for x in bdm.partition(np.ones((3, 3), dtype=int)) ]
+        >>> bdm = BDM(ndim=2, shape=(2, 2))
+        >>> [ x for x in bdm.partition(np.ones((4, 3), dtype=int)) ]
         [array([[1, 1],
-               [1, 1]]), array([[1],
-               [1]]), array([[1, 1]]), array([[1]])]
+               [1, 1]]), array([[1, 1],
+               [1, 1]])]
         """
-        if not shape:
-            shape = self.shape
-        yield from slice_dataset(X, shape=shape, shift=self.shift)
+        yield from self.boundary.partition(X)
 
     def lookup(self, parts):
         """Lookup CTM values for parts in a reference dataset.
@@ -227,9 +223,9 @@ class BDMBase:
 
         Examples
         --------
-        >>> bdm = BDMBase(ndim=1, shift=0)
+        >>> bdm = BDM(ndim=1)
         >>> data = np.ones((12, ), dtype=int)
-        >>> parts = bdm.partition(data, (12, ))
+        >>> parts = bdm.partition(data)
         >>> [ x for x in bdm.lookup(parts) ] # doctest: +FLOAT_CMP
         [('111111111111', 25.610413747641715)]
         """
@@ -263,9 +259,9 @@ class BDMBase:
 
         Examples
         --------
-        >>> bdm = BDMBase(ndim=1, shift=0)
+        >>> bdm = BDM(ndim=1)
         >>> data = np.ones((24, ), dtype=int)
-        >>> parts = bdm.partition(data, (12, ))
+        >>> parts = bdm.partition(data)
         >>> ctms = bdm.lookup(parts)
         >>> bdm.aggregate(ctms) # doctest: +FLOAT_CMP
         Counter({('111111111111', 25.610413747641715): 2})
@@ -291,7 +287,7 @@ class BDMBase:
         Examples
         --------
         >>> import numpy as np
-        >>> bdm = BDMBase(ndim=1, shift=0)
+        >>> bdm = BDM(ndim=1)
         >>> bdm.lookup_and_count(np.ones((12, ), dtype=int)) # doctest: +FLOAT_CMP
         Counter({('111111111111', 25.610413747641715): 1})
         """
@@ -316,7 +312,7 @@ class BDMBase:
         Examples
         --------
         >>> from collections import Counter
-        >>> bdm = BDMBase(ndim=1, shift=0)
+        >>> bdm = BDM(ndim=1)
         >>> c1 = Counter([('111111111111', 1.95207842085224e-08)])
         >>> c2 = Counter([('111111111111', 1.95207842085224e-08)])
         >>> bdm.compute_bdm(c1, c2) # doctest: +FLOAT_CMP
@@ -367,16 +363,17 @@ class BDMBase:
         Examples
         --------
         >>> import numpy as np
-        >>> bdm = BDMBase(ndim=2, shift=0)
+        >>> bdm = BDM(ndim=2)
         >>> bdm.bdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         25.176631293734488
         """
         if check_data:
             self._check_data(X)
-        if normalize and self.shift > 0:
+        if normalize and isinstance(self.boundary, PartitionCorrelated):
             raise NotImplementedError(
-                "normalized 'bdm' not implemented for positive 'shift'"
-            )
+                "normalized BDM not implemented for '{}' partition".format(
+                    PartitionCorrelated.name
+                ))
         counter = self.lookup_and_count(X)
         cmx = self.compute_bdm(counter)
         if raise_if_zero and cmx == 0:
@@ -403,7 +400,7 @@ class BDMBase:
         Examples
         --------
         >>> from collections import Counter
-        >>> bdm = BDMBase(ndim=1, shift=0)
+        >>> bdm = BDM(ndim=1)
         >>> c1 = Counter([('111111111111', 1.95207842085224e-08)])
         >>> c2 = Counter([('000000000000', 1.95207842085224e-08)])
         >>> bdm.compute_ent(c1, c2) # doctest: +FLOAT_CMP
@@ -450,16 +447,17 @@ class BDMBase:
         Examples
         --------
         >>> import numpy as np
-        >>> bdm = BDMBase(ndim=2, shift=0)
+        >>> bdm = BDM(ndim=2)
         >>> bdm.ent(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         0.0
         """
         if check_data:
             self._check_data(X)
-        if normalize and self.shift > 0:
+        if normalize and isinstance(self.boundary, PartitionCorrelated):
             raise NotImplementedError(
-                "normalized 'ent' not implemented for positive 'shift'"
-            )
+                "normalized entropy not implemented for '{}' partition".format(
+                    PartitionCorrelated.name
+                ))
         counter = self.lookup_and_count(X)
         ent = self.compute_ent(counter)
         if normalize:
@@ -513,8 +511,7 @@ class BDMBase:
         return counter_dct
 
     def _iter_shapes(self, X):
-        shapes = Counter(iter_part_shapes(X, shape=self.shape, shift=self.shift))
-        yield from shapes.items()
+        yield from Counter(self.boundary._iter_shapes(X)).items()
 
     def _get_max_bdm(self, X):
         counter_dct = self._get_counter_dct(X)
@@ -547,89 +544,3 @@ class BDMBase:
             p = n/ncounts
             ent -= p*log2(p)
         return ent
-
-
-class BDMIgnore(BDMBase):
-    """Block decomposition method with ignore boundary condition.
-
-    See Also
-    --------
-    BDMBase : base BDM class
-    """
-    boundary_condition = 'ignore'
-
-    def __init__(self, ndim, shape=None, nsymbols=2, ctmname=None,
-                 warn_if_missing_ctm=True):
-        """Initialization method."""
-        super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname,
-                         nsymbols=nsymbols, warn_if_missing_ctm=warn_if_missing_ctm)
-
-    def partition(self, X, shape=None):
-        """Partition with ignore leftovers boundary condition.
-
-        .. automethod:: BDMBase.partition
-
-        Examples
-        --------
-        >>> bdm = BDMIgnore(ndim=1, shape=(2, 2))
-        >>> [ x for x in bdm.partition(np.ones((3, 3), dtype=int)) ]
-        [array([[1, 1],
-               [1, 1]])]
-        """
-        if not shape:
-            shape = self.shape
-        for part in super().partition(X, shape=shape):
-            if part.shape == shape:
-                yield part
-
-    def _iter_shapes(self, X):
-        for shape, n in super()._iter_shapes(X):
-            if shape == self.shape:
-                yield shape, n
-
-
-class BDMRecursive(BDMBase):
-    """Block decomposition method with recursive boundary condition.
-
-    Attributes
-    ----------
-    min_length : int
-        Minimum parts' length. Non-negative.
-        In case of multidimensional objects it specifies minimum
-        length of any single dimension.
-
-    See Also
-    --------
-    BDMBase : base BDM class
-    """
-    boundary_condition = 'recursive'
-
-    def __init__(self, ndim, min_length, shape=None, nsymbols=2, ctmname=None,
-                 warn_if_missing_ctm=True):
-        """Initialization method."""
-        super().__init__(ndim, shift=0, shape=shape, ctmname=ctmname,
-                         nsymbols=nsymbols, warn_if_missing_ctm=warn_if_missing_ctm)
-        self.min_length = min_length
-
-    def partition(self, X, shape=None):
-        """Partition algorithm with a shrinking parts' size.
-
-        .. automethod:: BDMBase.partition
-
-        Examples
-        --------
-        >>> bdm = BDMRecursive(ndim=1, shape=(6, ), min_length=4)
-        >>> [ p for p in bdm.partition(np.ones(10, )) ]
-        [array([1., 1., 1., 1., 1., 1.]), array([1., 1., 1., 1.])]
-        """
-        if not shape:
-            shape = self.shape
-        for part in super().partition(X, shape=shape):
-            if part.shape == shape:
-                yield part
-            else:
-                min_dim_length = min(part.shape)
-                if min_dim_length < self.min_length:
-                    continue
-                shrinked_shape = tuple(min_dim_length for _ in range(len(shape)))
-                yield from super().partition(part, shape=shrinked_shape)

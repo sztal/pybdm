@@ -6,7 +6,8 @@ import pytest
 from pytest import approx
 import numpy as np
 from joblib import Parallel, delayed
-from bdm.bdm import BDMIgnore, BDMRecursive
+from bdm.bdm import BDM
+from bdm.partitions import PartitionRecursive
 from bdm.encoding import array_from_string
 from bdm.utils import slice_dataset
 from bdm.exceptions import BDMRuntimeWarning
@@ -61,16 +62,17 @@ class TestBDM:
                       warn_if_missing_ctm):
         # pylint: disable=unused-variable,broad-except
         try:
-            bdm1 = BDMIgnore(
+            bdm1 = BDM(
                 ndim=ndim,
                 nsymbols=nsymbols,
                 ctmname=ctmname,
                 warn_if_missing_ctm=warn_if_missing_ctm
             )
-            bdm1 = BDMRecursive(
+            bdm1 = BDM(
                 ndim=ndim,
-                min_length=min_length,
                 nsymbols=nsymbols,
+                boundary=PartitionRecursive,
+                min_length=min_length,
                 ctmname=ctmname,
                 warn_if_missing_ctm=warn_if_missing_ctm
             )

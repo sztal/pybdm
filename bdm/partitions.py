@@ -1,15 +1,23 @@
 """Partition algorithm classes."""
 # pylint: disable=unused-argument
-from bdm.utils import slice_dataset
+from .utils import slice_dataset, iter_part_shapes
 
 
 class _Partition:
     """Partition algorithm base class."""
-    boundary = 'none'
+    name = 'none'
 
     def __init__(self, shape):
         """Initialization method."""
         self.shape = shape
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        return "<{}({})>".format(cn, ", ".join(self.params))
+
+    @property
+    def params(self):
+        return [ "shape={}".format(self.shape) ]
 
     def partition(self, X):
         """Partition method.
@@ -22,6 +30,9 @@ class _Partition:
         cn = self.__class__.__name__
         raise NotImplementedError("'{}' is not meant for a direct use".format(cn))
 
+    def _iter_shapes(self, X):
+        yield from iter_part_shapes(X, shape=self.shape, shift=0)
+
 
 class PartitionIgnore(_Partition):
     """Partition with the 'ignore' boundary condition.
@@ -31,7 +42,7 @@ class PartitionIgnore(_Partition):
     shape : tuple
         Part shape.
     """
-    boundary = 'ignore'
+    name = 'ignore'
 
     def partition(self, X):
         """Partition 'ignore' method.
@@ -42,7 +53,12 @@ class PartitionIgnore(_Partition):
             if part.shape == self.shape:
                 yield part
 
-class PartitionCorrelated(_Partition):
+    def _iter_shapes(self, X):
+        for shape in super()._iter_shapes(X):
+            if shape == self.shape:
+                yield shape
+
+class PartitionCorrelated(PartitionIgnore):
     """Partition with the 'correlated' boundary condition.
 
     Attributes
@@ -57,7 +73,7 @@ class PartitionCorrelated(_Partition):
     AttributeError
         If `shift` is not positive.
     """
-    boundary = 'correlated'
+    name = 'correlated'
 
     def __init__(self, shape, shift=1):
         """Initialization method."""
@@ -65,6 +81,10 @@ class PartitionCorrelated(_Partition):
         if shift < 1:
             raise AttributeError("'shift' has to be a positive integer")
         self.shift = shift
+
+    @property
+    def params(self):
+        return super().params + [ "shift={}".format(self.shift) ]
 
     def partition(self, X):
         """Partition 'correlated' method.
@@ -74,6 +94,13 @@ class PartitionCorrelated(_Partition):
         for part in slice_dataset(X, shape=self.shape, shift=self.shift):
             if part.shape == self.shape:
                 yield part
+
+    def _iter_shapes(self, X):
+        shapes = iter_part_shapes(X, shape=self.shape, shift=self.shift)
+        for shape in shapes:
+            if shape == self.shape:
+                yield shape
+
 
 class PartitionRecursive(_Partition):
     """Partition with the 'recursive' boundary condition.
@@ -87,12 +114,16 @@ class PartitionRecursive(_Partition):
         In case of multidimensional objects it specifies minimum
         length of any single dimension.
     """
-    boundary = 'recursive'
+    name = 'recursive'
 
     def __init__(self, shape, min_length=2):
         """Initialization method."""
         super().__init__(shape=shape)
         self.min_length = min_length
+
+    @property
+    def params(self):
+        return super().params + [ "min_length={}".format(self.min_length) ]
 
     def _partition(self, X, shape):
         for part in slice_dataset(X, shape=shape, shift=0):

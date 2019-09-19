@@ -43,6 +43,14 @@ bdm.exceptions module
    :undoc-members:
    :show-inheritance:
 
+bdm.partitions module
+---------------------
+
+.. automodule:: bdm.partitions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 bdm.utils module
 ----------------
 
