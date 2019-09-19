@@ -23,7 +23,7 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 setup(
     name='bdm',
-    version='0.0.1',
+    version='0.1.0',
     description='Python implementation of block decomposition method for approximating algorithmic complexity.',
     long_description=readme + '\n\n' + doclink + '\n\n' + history,
     author='Szymon Talaga',

@@ -101,16 +101,6 @@ class BDMBase:
     `BDMBase` should not be used for actual computations.
     It is meant to serve as a base class for extending
     and implementing particular boundary conditions.
-
-    Raises
-    ------
-    AttributeError
-        If 'shift' is not ``0`` or ``1``.
-    AttributeError
-        If parts' `shape` is not equal in each dimension.
-    CTMDatasetNotFoundError
-        If there is no CTM dataset for a combination of `ndim` and `nsymbols`
-        or a given `ctmname`.
     """
     _ndim_to_ctm = {
         # 1D datasets
@@ -126,7 +116,18 @@ class BDMBase:
 
     def __init__(self, ndim, shift, shape=None, nsymbols=2, ctmname=None,
                  warn_if_missing_ctm=True):
-        """Initialization method."""
+        """Initialization method.
+
+        Raises
+        ------
+        AttributeError
+            If 'shift' is not ``0`` or ``1``.
+        AttributeError
+            If parts' `shape` is not equal in each dimension.
+        CTMDatasetNotFoundError
+            If there is no CTM dataset for a combination of `ndim` and `nsymbols`
+            or a given `ctmname`.
+        """
         if shift not in (0, 1):
             raise BDMConfigurationError("'shift' supports only values of `0` and `1`")
         self.ndim = ndim
