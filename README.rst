@@ -23,7 +23,9 @@ more traditional tools based on probability theory and information theory.
 Currently 1D and 2D binary arrays are supported, but this may be extended to higher dimensionalities and more complex alphabets in the future.
 
 BDM and the necessary parts of the algorithmic information theory
-it is based on are described in `this paper <https://www.mdpi.com/1099-4300/20/8/605>`__.
+it is based on are described in
+:cite:`soler-toscano_calculating_2014` and
+:cite:`zenil_decomposition_2018`.
 
 
 Installation
@@ -186,3 +188,9 @@ Authors & Contact
 
 * Szymon Talaga <stalaga@protonmail.com>
 * Kostas Tsampourakis <kostas.tsampourakis@gmail.com>
+
+
+References
+==========
+
+.. bibliography:: references.bib

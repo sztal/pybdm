@@ -2,7 +2,16 @@
 Installation
 ============
 
-At the command line either via easy_install or pip::
+Local development::
 
-    $ easy_install bdm
-    $ pip install bdm
+    git clone https://github.com/sztal/pybdm
+    cd pybdm
+    pip install --editable .
+
+Development version installation::
+
+    pip install git+https://github.com/sztal/pybdm.git
+
+Standard installation (not yet on *PyPI*)::
+
+    pip install bdm

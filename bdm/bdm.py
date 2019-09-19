@@ -9,7 +9,7 @@ Configuration step is necessary for specifying dimensionality of allowed
 datasets, encoding of reference CTM data as well as
 boundary conditions for block decomposition etc. This is why BDM
 is implemented in object-oriented fashion, an instance can be first configured
-properly and then it exposes a public method :py:meth:`bdm.BDM.complexity`
+properly and then it exposes a public method :py:meth:`bdm.BDM.bdm`
 for computing approximated complexity via BDM.
 """
 # pylint: disable=W0221

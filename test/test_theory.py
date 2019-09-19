@@ -8,7 +8,7 @@ from math import factorial
 import pytest
 from pytest import approx
 import numpy as np
-from bdm import BDM, BDMRecursive
+from bdm import BDM
 from bdm.encoding import decode_array
 
 
