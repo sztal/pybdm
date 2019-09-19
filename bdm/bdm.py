@@ -372,6 +372,10 @@ class BDMBase:
         """
         if check_data:
             self._check_data(X)
+        if normalize and self.shift > 0:
+            raise NotImplementedError(
+                "normalized 'bdm' not implemented for positive 'shift'"
+            )
         counter = self.lookup_and_count(X)
         cmx = self.compute_bdm(counter)
         if raise_if_zero and cmx == 0:
@@ -451,6 +455,10 @@ class BDMBase:
         """
         if check_data:
             self._check_data(X)
+        if normalize and self.shift > 0:
+            raise NotImplementedError(
+                "normalized 'ent' not implemented for positive 'shift'"
+            )
         counter = self.lookup_and_count(X)
         ent = self.compute_ent(counter)
         if normalize:
