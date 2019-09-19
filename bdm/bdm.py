@@ -19,7 +19,7 @@ from collections import Counter, defaultdict
 from functools import reduce
 from itertools import cycle, repeat, chain
 import numpy as np
-from .utils import get_ctm_dataset, slice_dataset
+from .utils import get_ctm_dataset, slice_dataset, iter_part_shapes
 from .encoding import string_from_array, normalize_key
 from .exceptions import BDMRuntimeWarning
 from .exceptions import CTMDatasetNotFoundError, BDMConfigurationError
@@ -377,8 +377,8 @@ class BDMBase:
         if raise_if_zero and cmx == 0:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
         if normalize:
-            min_cmx = self._get_min_bdm(X.shape)
-            max_cmx = self._get_max_bdm(X.shape)
+            min_cmx = self._get_min_bdm(X)
+            max_cmx = self._get_max_bdm(X)
             cmx = (cmx - min_cmx) / (max_cmx - min_cmx)
         return cmx
 
@@ -454,8 +454,8 @@ class BDMBase:
         counter = self.lookup_and_count(X)
         ent = self.compute_ent(counter)
         if normalize:
-            min_ent = self._get_min_ent(X.shape)
-            max_ent = self._get_max_ent(X.shape)
+            min_ent = self._get_min_ent(X)
+            max_ent = self._get_max_ent(X)
             ent = (ent - min_ent) / (max_ent - min_ent)
         return ent
 
@@ -491,38 +491,53 @@ class BDMBase:
         parts = chain.from_iterable(map(rep, self._ctm[shape].items()))
         return cycle(enumerate(parts))
 
-    def _get_counter_dct(self, shape):
+    def _get_counter_dct(self, X):
         cycle_dct = {}
         counter_dct = defaultdict(Counter)
-        for part in self.partition(np.zeros(shape, dtype=np.uint8)):
-            if part.shape not in cycle_dct:
-                cycle_dct[part.shape] = self._cycle_parts(part.shape)
-            idx, kv = next(cycle_dct[part.shape])
-            _, cmx = kv
-            counter_dct[part.shape].update(((idx, cmx),))
+        for shape, n in self._iter_shapes(X):
+            if shape not in cycle_dct:
+                cycle_dct[shape] = self._cycle_parts(shape)
+            for _ in range(n):
+                idx, kv = next(cycle_dct[shape])
+                _, cmx = kv
+                counter_dct[shape].update(((idx, cmx),))
         return counter_dct
 
-    def _get_max_bdm(self, shape):
-        counter_dct = self._get_counter_dct(shape)
-        max_bdm = 0
+    def _iter_shapes(self, X):
+        shapes = Counter(iter_part_shapes(X, shape=self.shape, shift=self.shift))
+        yield from shapes.items()
+
+    def _get_max_bdm(self, X):
+        counter_dct = self._get_counter_dct(X)
+        bdm = 0
         for dct in counter_dct.values():
             for c, n in dct.items():
                 _, cmx = c
-                max_bdm += cmx + log2(n)
-        return max_bdm
+                bdm += cmx + log2(n)
+        return bdm
 
-    def _get_min_bdm(self, shape):
-        return self.bdm(np.zeros(shape, dtype=np.uint8))
+    def _get_min_bdm(self, X):
+        bdm = 0
+        for shape, n in self._iter_shapes(X):
+            cmx = next(reversed(self._ctm[shape].values()))
+            bdm += cmx + log2(n)
+        return bdm
 
-    def _get_max_ent(self, shape):
-        counter_dct = self._get_counter_dct(shape)
+    def _get_max_ent(self, X):
+        counter_dct = self._get_counter_dct(X)
         parts_count = Counter()
         for dct in counter_dct.values():
             parts_count.update(idx for idx, _ in dct)
         return self.compute_ent(parts_count)
 
-    def _get_min_ent(self, shape):
-        return self.ent(np.zeros(shape, dtype=np.uint8))
+    def _get_min_ent(self, X):
+        shapes = Counter(shape for shape, _ in self._iter_shapes(X))
+        ncounts = sum(shapes.values())
+        ent = 0
+        for n in shapes.values():
+            p = n/ncounts
+            ent -= p*log2(p)
+        return ent
 
 
 class BDMIgnore(BDMBase):
@@ -557,6 +572,11 @@ class BDMIgnore(BDMBase):
         for part in super().partition(X, shape=shape):
             if part.shape == shape:
                 yield part
+
+    def _iter_shapes(self, X):
+        for shape, n in super()._iter_shapes(X):
+            if shape == self.shape:
+                yield shape, n
 
 
 class BDMRecursive(BDMBase):
