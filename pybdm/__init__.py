@@ -1,6 +1,6 @@
 """Approximation of algorithmic complexity by Block Decomposition Method.
 
-This package provides the :py:class:`bdm.BDM` class for computing approximated
+This package provides the :py:class:`pybdm.BDM` class for computing approximated
 algorithmic complexity of arbitrary binary 1D and 2D arrays based
 on the *Block Decomposition Method* (**BDM**).  The relevant theory
 is described in

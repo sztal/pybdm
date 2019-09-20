@@ -5,10 +5,10 @@ from random import choice
 import pytest
 from pytest import approx
 import numpy as np
-from bdm.bdm import BDM
-from bdm.partitions import PartitionCorrelated
-from bdm.algorithms import PerturbationExperiment
-from bdm.utils import prod
+from pybdm.bdm import BDM
+from pybdm.partitions import PartitionCorrelated
+from pybdm.algorithms import PerturbationExperiment
+from pybdm.utils import prod
 
 
 @pytest.fixture(scope='function')

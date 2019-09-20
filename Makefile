@@ -26,7 +26,7 @@ clean-pyc:
 clean-misc:
 	find . -name '.benchmarks' -exec rm -rf {} +
 	find . -name '.pytest-cache' -exec rm -rf {} +
-	rm .coverage*
+	rm -f .coverage*
 
 lint:
 	py.test --pylint -m pylint
@@ -38,16 +38,16 @@ test-all:
 	tox
 
 coverage:
-	coverage run --source bdm setup.py test
+	coverage run --source pybdm setup.py test
 	coverage report -m
 	coverage html
 	xdg-open htmlcov/index.html
 	# open htmlcov/index.html
 
 docs:
-	rm -f docs/bdm.rst
+	rm -f docs/pybdm.rst
 	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ bdm
+	sphinx-apidoc -o docs/ pybdm
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
 	xdg-open docs/_build/html/index.html

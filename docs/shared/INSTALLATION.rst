@@ -10,4 +10,4 @@ Development version installation::
 
 Standard installation (not yet on *PyPI*)::
 
-    pip install bdm
+    pip install pybdm

@@ -6,12 +6,12 @@ import pytest
 from pytest import approx
 import numpy as np
 from joblib import Parallel, delayed
-from bdm.bdm import BDM
-from bdm.partitions import PartitionRecursive
-from bdm.encoding import array_from_string
-from bdm.utils import slice_dataset
-from bdm.exceptions import BDMRuntimeWarning
-from bdm.exceptions import CTMDatasetNotFoundError, BDMConfigurationError
+from pybdm.bdm import BDM
+from pybdm.partitions import PartitionRecursive
+from pybdm.encoding import array_from_string
+from pybdm.utils import slice_dataset
+from pybdm.exceptions import BDMRuntimeWarning
+from pybdm.exceptions import CTMDatasetNotFoundError, BDMConfigurationError
 
 s0 = '0'*24
 s1 = '0'*12+'1'*12

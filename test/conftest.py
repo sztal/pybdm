@@ -1,7 +1,7 @@
 """*PyTest* configuration and general purpose fixtures."""
 import pytest
-from bdm import BDM
-from bdm.partitions import PartitionRecursive
+from pybdm import BDM
+from pybdm.partitions import PartitionRecursive
 
 
 def pytest_addoption(parser):

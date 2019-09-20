@@ -6,7 +6,7 @@ datasets.
 
 In case of CTM dataset containing objects with several different dimensionalities
 string keys have to be used and this representation is used by
-:py:mod:`bdm.stages` functions at the moment.
+:py:mod:`pybdm.partitions` functions at the moment.
 
 Integer encoding can be used for easy generation of objects
 of fixed dimensionality as each such object using a fixed,

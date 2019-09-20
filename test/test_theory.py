@@ -8,8 +8,8 @@ from math import factorial
 import pytest
 from pytest import approx
 import numpy as np
-from bdm import BDM
-from bdm.encoding import decode_array
+from pybdm import BDM
+from pybdm.encoding import decode_array
 
 
 @pytest.mark.slow

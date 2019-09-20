@@ -14,7 +14,7 @@ Binary sequences (1D)
 .. code-block:: python
 
     import numpy as np
-    from bdm import BDM
+    from pybdm import BDM
 
     # Create a dataset (must be of integer type)
     X = np.ones((100,), dtype=int)
@@ -36,7 +36,7 @@ Binary matrices (2D)
 .. code-block:: python
 
     import numpy as np
-    from bdm import BDM
+    from pybdm import BDM
 
     # Create a dataset (must be of integer type)
     X = np.ones((100, 100), dtype=int)
@@ -56,7 +56,7 @@ Non-binary sequences (1D)
 .. code-block:: python
 
     import numpy as np
-    from bdm import BDM
+    from pybdm import BDM
 
     # Create a dataset (4 discrete symbols)
     np.random.seed(303)
@@ -86,8 +86,8 @@ into a single BDM approximation of the algorithmic complexity of the dataset.
 
     import numpy as np
     from joblib import Parallel, delayed
-    from bdm import BDM
-    from bdm.utils import slice_dataset
+    from pybdm import BDM
+    from pybdm.utils import slice_dataset
 
     # Create a dataset (must be of integer type)
     X = np.ones((1000, 1000), dtype=int)
@@ -124,8 +124,8 @@ to be noise since they extend the system's description length.
 .. code-block:: python
 
     import numpy as np
-    from bdm import BDM
-    from bdm.algorithms import PerturbationExperiment
+    from pybdm import BDM
+    from pybdm.algorithms import PerturbationExperiment
 
     # Create a dataset (must be of integer type)
     X = np.ones((100, 100), dtype=int)

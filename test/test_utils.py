@@ -1,7 +1,7 @@
 """Tests for utility functions."""
 import pytest
 import numpy as np
-from bdm.utils import slice_dataset
+from pybdm.utils import slice_dataset
 
 
 @pytest.mark.parametrize('X,shape,shift,expected', [

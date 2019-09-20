@@ -1,9 +1,9 @@
 """Unit tests for encoding/decoding functions."""
 import pytest
 import numpy as np
-from bdm.encoding import encode_sequence, decode_sequence
-from bdm.encoding import encode_array, decode_array
-from bdm.encoding import array_from_string, string_from_array
+from pybdm.encoding import encode_sequence, decode_sequence
+from pybdm.encoding import encode_array, decode_array
+from pybdm.encoding import array_from_string, string_from_array
 
 
 @pytest.mark.parametrize('x,shape,expected', [

@@ -1,7 +1,7 @@
 """Unit tests for BDM partition algorithms."""
 import pytest
 import numpy as np
-from bdm.partitions import PartitionIgnore, PartitionCorrelated, PartitionRecursive
+from pybdm.partitions import PartitionIgnore, PartitionCorrelated, PartitionRecursive
 
 
 def _test_decompose(partition, X, expected):

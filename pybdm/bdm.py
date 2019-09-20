@@ -9,7 +9,7 @@ Configuration step is necessary for specifying dimensionality of allowed
 datasets, encoding of reference CTM data as well as
 boundary conditions for block decomposition etc. This is why BDM
 is implemented in object-oriented fashion, an instance can be first configured
-properly and then it exposes a public method :py:meth:`bdm.BDM.bdm`
+properly and then it exposes a public method :py:meth:`pybdm.BDM.bdm`
 for computing approximated complexity via BDM.
 """
 # pylint: disable=protected-access
@@ -54,7 +54,7 @@ class BDM:
         Missing CTM values are imputed with mean CTM complexities
         over all parts of a given shape.
         This is can be also disabled globally with the global option
-        of the same name, i.e. ``bdm.set_options(warn_if_missing_ctm=False)``.
+        of the same name, i.e. ``pybdm.options.set(warn_if_missing_ctm=False)``.
 
 
     Overview

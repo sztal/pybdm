@@ -18,11 +18,11 @@ doclink = """
 Documentation
 -------------
 
-The full documentation is at http://bdm.rtfd.org."""
+The full documentation is at http://pybdm.rtfd.org."""
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 setup(
-    name='bdm',
+    name='pybdm',
     version='0.1.0',
     description='Python implementation of block decomposition method for approximating algorithmic complexity.',
     long_description=readme + '\n\n' + doclink + '\n\n' + history,
@@ -30,11 +30,8 @@ setup(
     maintainer='Szymon Talaga',
     maintainer_email='stalaga@protonmail.com',
     url='https://github.com/sztal/pybdm',
-    packages=[
-        *find_packages()
-        #'bdm'
-    ],
-    package_data={'bdm': ['resources/*.pkl']},
+    packages=[ *find_packages() ],
+    package_data={'pybdm': ['resources/*.pkl']},
     include_package_data=True,
     setup_requires=['pytest-runner'],
     tests_require=[
@@ -55,7 +52,20 @@ setup(
     ],
     license='MIT',
     zip_safe=False,
-    keywords='bdm',
+    keywords=[
+        'bdm',
+        'ctm',
+        'aid',
+        'algorithmic information',
+        'algorithmic information dynamics',
+        'algorithmic complexity',
+        'kolmogorov complexity',
+        'k-complexity',
+        'description length',
+        'block decomposition method',
+        'coding theorem method',
+        'algorithmic information theory'
+    ],
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',

@@ -22,7 +22,7 @@ class PerturbationExperiment:
     ----------
     X : array_like
         Dataset for perturbation analysis.
-    bdm : BDMBase
+    bdm : BDM
         BDM object.
     metric : {'bdm', 'ent'}
         Which metric to use for perturbing.
@@ -175,7 +175,7 @@ class PerturbationExperiment:
 
         Examples
         --------
-        >>> from bdm import BDM
+        >>> from pybdm import BDM
         >>> bdm = BDM(ndim=1)
         >>> X = np.ones((30, ), dtype=int)
         >>> perturbation = PerturbationExperiment(bdm, X)
@@ -221,7 +221,7 @@ class PerturbationExperiment:
 
         Examples
         --------
-        >>> from bdm import BDM
+        >>> from pybdm import BDM
         >>> bdm = BDM(ndim=1)
         >>> X = np.ones((30, ), dtype=int)
         >>> perturbation = PerturbationExperiment(bdm, X)
