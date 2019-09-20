@@ -2,4 +2,4 @@
 Usage
 ========
 
-.. include:: ../USAGE.rst
+.. include:: shared/USAGE.rst

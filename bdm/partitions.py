@@ -20,7 +20,7 @@ class _Partition:
         return [ "shape={}".format(self.shape) ]
 
     def decompose(self, X):
-        """Partition method.
+        """Decompose a dataset into blocks.
 
         Parameters
         ----------
@@ -45,9 +45,9 @@ class PartitionIgnore(_Partition):
     name = 'ignore'
 
     def decompose(self, X):
-        """Partition 'ignore' method.
+        """Decompose with the 'ignore' boundary.
 
-        .. automethod:: _Partition.partition
+        .. automethod:: _Partition.decompose
         """
         for part in slice_dataset(X, shape=self.shape, shift=0):
             if part.shape == self.shape:
@@ -87,9 +87,9 @@ class PartitionCorrelated(PartitionIgnore):
         return super().params + [ "shift={}".format(self.shift) ]
 
     def decompose(self, X):
-        """Partition 'correlated' method.
+        """Decompose with the 'correlated' boundary.
 
-        .. automethod:: _Partition.partition
+        .. automethod:: _Partition.decompose
         """
         for part in slice_dataset(X, shape=self.shape, shift=self.shift):
             if part.shape == self.shape:
@@ -137,8 +137,8 @@ class PartitionRecursive(_Partition):
                 yield from self._decompose(part, shrinked_shape)
 
     def decompose(self, X):
-        """Partition 'recursive' method.
+        """Decompose with the 'recursive' boundary.
 
-        .. automethod:: _Partition.partition
+        .. automethod:: _Partition.decompose
         """
         yield from self._decompose(X, shape=self.shape)
