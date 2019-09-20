@@ -34,6 +34,11 @@ Installation
 
 .. include:: shared/INSTALLATION.rst
 
+Usage
+=====
+
+.. include:: shared/USAGE.rst
+
 
 Feedback
 ========

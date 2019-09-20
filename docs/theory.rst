@@ -1,6 +1,6 @@
-======
-Theory
-======
+===============
+Theory & Design
+===============
 
 .. include:: shared/THEORY.rst
 

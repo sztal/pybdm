@@ -61,5 +61,3 @@ def get(name=None):
         return _options[name]
     except KeyError:
         raise KeyError("there is no '{}' option".format(name))
-
-
