@@ -63,7 +63,7 @@ def test_ctm_distribution_d1(nsymbols):
             total += 2**-cmx * mult
     assert total == approx(1, .01)
 
-# TODO: this is not passing; investigate reasons
+# TODO: this is not passing; investigate reasons # pylint: disable=fixme
 # @pytest.mark.slow
 # @pytest.mark.parametrize('nsymbols', [2])
 # def test_ctm_distribution_d2(nsymbols):

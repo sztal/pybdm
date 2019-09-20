@@ -19,6 +19,7 @@ from collections import Counter, defaultdict
 from functools import reduce
 from itertools import cycle, repeat, chain
 import numpy as np
+from . import options
 from .utils import get_ctm_dataset
 from .partitions import PartitionIgnore, PartitionCorrelated
 from .encoding import string_from_array, normalize_key
@@ -52,6 +53,8 @@ class BDM:
         computationally infeasible to explore entire parts space.
         Missing CTM values are imputed with mean CTM complexities
         over all parts of a given shape.
+        This is can be also disabled globally with the global option
+        of the same name, i.e. ``bdm.set_options(warn_if_missing_ctm=False)``.
 
 
     Overview
@@ -220,6 +223,7 @@ class BDM:
         BDMRuntimeWarning
             If ``warn_if_missing_ctm=True`` and there is no precomputed CTM
             value for a part during the lookup stage.
+            This can be always disabled with the global option of the same name.
 
         Examples
         --------
@@ -237,7 +241,7 @@ class BDM:
                 cmx = self._ctm[sh][key_n]
             except KeyError:
                 cmx = self._ctm_missing[sh]
-                if self.warn_if_missing_ctm:
+                if self.warn_if_missing_ctm and options.get('warn_if_missing_ctm'):
                     msg = "CTM dataset does not contain object '{}' of shape {}".format(
                         key, sh
                     )
@@ -376,13 +380,24 @@ class BDM:
                 ))
         counter = self.lookup_and_count(X)
         cmx = self.compute_bdm(counter)
-        if raise_if_zero and cmx == 0:
+        if raise_if_zero and options.get('raise_if_zero') and cmx == 0:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
         if normalize:
             min_cmx = self._get_min_bdm(X)
             max_cmx = self._get_max_bdm(X)
             cmx = (cmx - min_cmx) / (max_cmx - min_cmx)
         return cmx
+
+    def nbdm(self, X, **kwds):
+        """Alias for normalized BDM
+
+        Other arguments are passed as keywords.
+
+        See also
+        --------
+        bdm : BDM method
+        """
+        return self.bdm(X, normalize=True, **kwds)
 
     def compute_ent(self, *counters):
         """Compute block entropy from counter.
@@ -465,6 +480,17 @@ class BDM:
             max_ent = self._get_max_ent(X)
             ent = (ent - min_ent) / (max_ent - min_ent)
         return ent
+
+    def nent(self, X, **kwds):
+        """Alias for normalized block entropy.
+
+        Other arguments are passed as keywords.
+
+        See also
+        --------
+        ent : block entropy method
+        """
+        return self.ent(X, normalize=True, **kwds)
 
     def _check_data(self, X):
         """Check if data is correctly formatted.

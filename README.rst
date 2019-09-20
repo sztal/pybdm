@@ -20,12 +20,11 @@ mechanistic connections between elements of a system, even such that
 do not yield any regular statistical patterns that can be captured with
 more traditional tools based on probability theory and information theory.
 
-Currently 1D and 2D binary arrays are supported, but this may be extended to higher dimensionalities and more complex alphabets in the future.
+Currently 1D and 2D binary arrays are supported, as well as 1D arrays
+with 4, 5, 6 and 9 discrete symbols.
 
 BDM and the necessary parts of the algorithmic information theory
-it is based on are described in
-:cite:`soler-toscano_calculating_2014` and
-:cite:`zenil_decomposition_2018`.
+it is based on are described in `this article <https://www.mdpi.com/1099-4300/20/8/605>`_.
 
 
 Installation
@@ -57,6 +56,8 @@ input represented as `Numpy <http://www.numpy.org/>`__ arrays of integer type.
    ``BDM`` objects operate exclusively on **integer arrays**.
    Hence, any alphabet must be first mapped to a set of integers ranging
    from ``0`` to ``k``.
+
+Detailed usage examples can be found in the official documentation.
 
 
 Binary sequences (1D)
@@ -100,6 +101,25 @@ Binary matrices (2D)
 
     # BDM objects may also compute standard Shannon entropy in base 2
     bdm.ent(X)
+
+Non-binary sequences (1D)
+-------------------------
+
+.. code-block:: python
+
+    import numpy as np
+    from bdm import BDM
+
+    # Create a dataset (4 discrete symbols)
+    np.random.seed(303)
+    X = np.random.randint(0, 4, (100,))
+
+    # Initialize BDM object with 4-symbols alphabet
+    bdm = BDM(ndim=1, nsymbols=4)
+
+    # Compute BDM
+    bdm.bdm(X)
+
 
 
 Parallel processing

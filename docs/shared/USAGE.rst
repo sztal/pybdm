@@ -50,6 +50,24 @@ Binary matrices (2D)
     # BDM objects may also compute standard Shannon entropy in base 2
     bdm.ent(X)
 
+Non-binary sequences (1D)
+-------------------------
+
+.. code-block:: python
+
+    import numpy as np
+    from bdm import BDM
+
+    # Create a dataset (4 discrete symbols)
+    np.random.seed(303)
+    X = np.random.randint(0, 4, (100,))
+
+    # Initialize BDM object with 4-symbols alphabet
+    bdm = BDM(ndim=1, nsymbols=4)
+
+    # Compute BDM
+    bdm.bdm(X)
+
 
 Parallel processing
 -------------------
