@@ -82,16 +82,16 @@ class PerturbationExperiment:
             end = start + k
             return slice(start, end)
         try:
-            shift = self.bdm.boundary.shift
+            shift = self.bdm.partition.shift
         except AttributeError:
             shift = 0
-        shape = self.bdm.boundary.shape
+        shape = self.bdm.partition.shape
         if shift == 0:
             r_idx = tuple((k // l)*l for k, l in zip(idx, shape))
             idx = tuple(slice(k, k+l) for k, l in zip(r_idx, shape))
         else:
             idx = tuple(slice(max(0, k-l+1), k+l) for k, l in zip(idx, shape))
-        yield from self.bdm.partition(self.X[idx])
+        yield from self.bdm.decompose(self.X[idx])
 
     def _update_bdm(self, idx, old_value, new_value, keep_changes):
         old_bdm = self._value

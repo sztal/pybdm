@@ -50,4 +50,4 @@ def bdm_d2():
 
 @pytest.fixture(scope='session')
 def bdm_d1_b9():
-    return BDM(ndim=1, nsymbols=9, boundary=PartitionRecursive, min_length=1)
+    return BDM(ndim=1, nsymbols=9, partition=PartitionRecursive, min_length=1)

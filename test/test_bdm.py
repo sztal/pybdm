@@ -71,7 +71,7 @@ class TestBDM:
             bdm1 = BDM(
                 ndim=ndim,
                 nsymbols=nsymbols,
-                boundary=PartitionRecursive,
+                partition=PartitionRecursive,
                 min_length=min_length,
                 ctmname=ctmname,
                 warn_if_missing_ctm=warn_if_missing_ctm

@@ -39,7 +39,7 @@ class BDM:
         Number of dimensions of target dataset objects. Positive integer.
     nsymbols : int
         Number of symbols in the alphabet.
-    boundary : Partition class
+    partition : Partition class
         Partition algorithm class object.
         The class is called with the `shape` attribute is determined
         automatically if not passed and other attributes passed via ``**kwds``.
@@ -107,7 +107,7 @@ class BDM:
         (2, 2): 'CTM-B2-D4x4',
     }
 
-    def __init__(self, ndim, nsymbols=2, shape=None, boundary=PartitionIgnore,
+    def __init__(self, ndim, nsymbols=2, shape=None, partition=PartitionIgnore,
                  ctmname=None, warn_if_missing_ctm=True, **kwds):
         """Initialization method.
 
@@ -152,16 +152,16 @@ class BDM:
         self._ctm = ctm
         self._ctm_missing = ctm_missing
         self.warn_if_missing_ctm = warn_if_missing_ctm
-        self.boundary = boundary(shape=shape, **kwds)
+        self.partition = partition(shape=shape, **kwds)
 
     def __repr__(self):
-        partition = str(self.boundary)[1:-1]
+        partition = str(self.partition)[1:-1]
         cn = self.__class__.__name__
         return "<{}(ndim={}, nsymbols={}) with {}>".format(
             cn, self.ndim, self.nsymbols, partition
         )
 
-    def partition(self, X):
+    def decompose(self, X):
         """Standard partition stage function.
 
         Parameters
@@ -188,12 +188,12 @@ class BDM:
         Examples
         --------
         >>> bdm = BDM(ndim=2, shape=(2, 2))
-        >>> [ x for x in bdm.partition(np.ones((4, 3), dtype=int)) ]
+        >>> [ x for x in bdm.decompose(np.ones((4, 3), dtype=int)) ]
         [array([[1, 1],
                [1, 1]]), array([[1, 1],
                [1, 1]])]
         """
-        yield from self.boundary.partition(X)
+        yield from self.partition.decompose(X)
 
     def lookup(self, parts):
         """Lookup CTM values for parts in a reference dataset.
@@ -225,7 +225,7 @@ class BDM:
         --------
         >>> bdm = BDM(ndim=1)
         >>> data = np.ones((12, ), dtype=int)
-        >>> parts = bdm.partition(data)
+        >>> parts = bdm.decompose(data)
         >>> [ x for x in bdm.lookup(parts) ] # doctest: +FLOAT_CMP
         [('111111111111', 25.610413747641715)]
         """
@@ -261,7 +261,7 @@ class BDM:
         --------
         >>> bdm = BDM(ndim=1)
         >>> data = np.ones((24, ), dtype=int)
-        >>> parts = bdm.partition(data)
+        >>> parts = bdm.decompose(data)
         >>> ctms = bdm.lookup(parts)
         >>> bdm.aggregate(ctms) # doctest: +FLOAT_CMP
         Counter({('111111111111', 25.610413747641715): 2})
@@ -291,7 +291,7 @@ class BDM:
         >>> bdm.lookup_and_count(np.ones((12, ), dtype=int)) # doctest: +FLOAT_CMP
         Counter({('111111111111', 25.610413747641715): 1})
         """
-        parts = self.partition(X)
+        parts = self.decompose(X)
         ctms = self.lookup(parts)
         counter = self.aggregate(ctms)
         return counter
@@ -369,7 +369,7 @@ class BDM:
         """
         if check_data:
             self._check_data(X)
-        if normalize and isinstance(self.boundary, PartitionCorrelated):
+        if normalize and isinstance(self.partition, PartitionCorrelated):
             raise NotImplementedError(
                 "normalized BDM not implemented for '{}' partition".format(
                     PartitionCorrelated.name
@@ -453,7 +453,7 @@ class BDM:
         """
         if check_data:
             self._check_data(X)
-        if normalize and isinstance(self.boundary, PartitionCorrelated):
+        if normalize and isinstance(self.partition, PartitionCorrelated):
             raise NotImplementedError(
                 "normalized entropy not implemented for '{}' partition".format(
                     PartitionCorrelated.name
@@ -511,7 +511,7 @@ class BDM:
         return counter_dct
 
     def _iter_shapes(self, X):
-        yield from Counter(self.boundary._iter_shapes(X)).items()
+        yield from Counter(self.partition._iter_shapes(X)).items()
 
     def _get_max_bdm(self, X):
         counter_dct = self._get_counter_dct(X)

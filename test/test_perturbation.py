@@ -21,7 +21,7 @@ def perturbation(bdm_d2):
 def perturbation_overlap():
     np.random.seed(1001)
     X = np.random.randint(0, 2, (25, 25), dtype=int)
-    bdm = BDM(ndim=2, boundary=PartitionCorrelated, shift=1)
+    bdm = BDM(ndim=2, partition=PartitionCorrelated, shift=1)
     return PerturbationExperiment(bdm, X)
 
 @pytest.fixture(scope='function')
@@ -34,7 +34,7 @@ def perturbation_d1(bdm_d1):
 def perturbation_d1_overlap():
     np.random.seed(99)
     X = np.random.randint(0, 2, (100, ), dtype=int)
-    bdm = BDM(ndim=1, boundary=PartitionCorrelated, shift=1)
+    bdm = BDM(ndim=1, partition=PartitionCorrelated, shift=1)
     return PerturbationExperiment(bdm, X)
 
 @pytest.fixture(scope='function')
@@ -53,7 +53,7 @@ def perturbation_ent(bdm_d2):
 def perturbation_ent_overlap():
     np.random.seed(1001)
     X = np.random.randint(0, 2, (25, 25), dtype=int)
-    bdm = BDM(ndim=2, boundary=PartitionCorrelated, shift=1)
+    bdm = BDM(ndim=2, partition=PartitionCorrelated, shift=1)
     return PerturbationExperiment(bdm, X, metric='ent')
 
 @pytest.fixture(scope='function')
@@ -66,7 +66,7 @@ def perturbation_d1_ent(bdm_d1):
 def perturbation_d1_ent_overlap():
     np.random.seed(99)
     X = np.random.randint(0, 2, (100, ), dtype=int)
-    bdm = BDM(ndim=1, boundary=PartitionCorrelated, shift=1)
+    bdm = BDM(ndim=1, partition=PartitionCorrelated, shift=1)
     return PerturbationExperiment(bdm, X, metric='ent')
 
 

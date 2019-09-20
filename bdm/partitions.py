@@ -19,7 +19,7 @@ class _Partition:
     def params(self):
         return [ "shape={}".format(self.shape) ]
 
-    def partition(self, X):
+    def decompose(self, X):
         """Partition method.
 
         Parameters
@@ -44,7 +44,7 @@ class PartitionIgnore(_Partition):
     """
     name = 'ignore'
 
-    def partition(self, X):
+    def decompose(self, X):
         """Partition 'ignore' method.
 
         .. automethod:: _Partition.partition
@@ -86,7 +86,7 @@ class PartitionCorrelated(PartitionIgnore):
     def params(self):
         return super().params + [ "shift={}".format(self.shift) ]
 
-    def partition(self, X):
+    def decompose(self, X):
         """Partition 'correlated' method.
 
         .. automethod:: _Partition.partition
@@ -125,7 +125,7 @@ class PartitionRecursive(_Partition):
     def params(self):
         return super().params + [ "min_length={}".format(self.min_length) ]
 
-    def _partition(self, X, shape):
+    def _decompose(self, X, shape):
         for part in slice_dataset(X, shape=shape, shift=0):
             if part.shape == shape:
                 yield part
@@ -134,11 +134,11 @@ class PartitionRecursive(_Partition):
                 if min_dim_length < self.min_length:
                     continue
                 shrinked_shape = tuple(min_dim_length for _ in range(len(shape)))
-                yield from self._partition(part, shrinked_shape)
+                yield from self._decompose(part, shrinked_shape)
 
-    def partition(self, X):
+    def decompose(self, X):
         """Partition 'recursive' method.
 
         .. automethod:: _Partition.partition
         """
-        yield from self._partition(X, shape=self.shape)
+        yield from self._decompose(X, shape=self.shape)

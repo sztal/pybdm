@@ -4,8 +4,8 @@ import numpy as np
 from bdm.partitions import PartitionIgnore, PartitionCorrelated, PartitionRecursive
 
 
-def _test_partition(partition, X, expected):
-    output = [ p for p in partition.partition(X) ]
+def _test_decompose(partition, X, expected):
+    output = [ p for p in partition.decompose(X) ]
     assert len(output) == len(expected)
     assert all(np.array_equal(o, e) for o, e in zip(output, expected))
 
@@ -20,7 +20,7 @@ def _test_partition(partition, X, expected):
 ])
 def test_partition_ignore(X, shape, expected):
     partition = PartitionIgnore(shape=shape)
-    _test_partition(partition, X, expected)
+    _test_decompose(partition, X, expected)
 
 @pytest.mark.parametrize('X,shape,shift,expected', [
     (np.ones((2, 2)), (2, 2), 1, [ np.ones((2, 2)) ]),
@@ -29,7 +29,7 @@ def test_partition_ignore(X, shape, expected):
 ])
 def test_partition_correlated(X, shape, shift, expected):
     partition = PartitionCorrelated(shape=shape, shift=shift)
-    _test_partition(partition, X, expected)
+    _test_decompose(partition, X, expected)
 
 @pytest.mark.parametrize('X,shape,min_length,expected', [
     (np.ones((2, 2)), (2, 2), 2, [ np.ones((2, 2)) ]),
@@ -41,4 +41,4 @@ def test_partition_correlated(X, shape, shift, expected):
 ])
 def test_partition_recursive(X, shape, min_length, expected):
     partition = PartitionRecursive(shape=shape, min_length=min_length)
-    _test_partition(partition, X, expected)
+    _test_decompose(partition, X, expected)
