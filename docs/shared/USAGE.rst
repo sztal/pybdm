@@ -5,7 +5,9 @@ input represented as `Numpy <http://www.numpy.org/>`__ arrays of integer type.
 
    ``BDM`` objects operate exclusively on **integer arrays**.
    Hence, any alphabet must be first mapped to a set of integers ranging
-   from ``0`` to ``k``.
+   from ``0`` to ``k``. Currently only standard :py:mod:`numpy` arrays
+   are accepted. However, in general it is possible to conceive of a BDM
+   variant optimized for sparse array. We plan provide in the releas.
 
 Detailed description of the design of our implementation of BDM
 can be found in :doc:`/theory`.
