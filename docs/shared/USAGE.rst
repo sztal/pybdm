@@ -7,6 +7,9 @@ input represented as `Numpy <http://www.numpy.org/>`__ arrays of integer type.
    Hence, any alphabet must be first mapped to a set of integers ranging
    from ``0`` to ``k``.
 
+Detailed description of the design of our implementation of BDM
+can be found in :doc:`/theory`.
+
 
 Binary sequences (1D)
 ---------------------

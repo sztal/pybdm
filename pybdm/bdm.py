@@ -329,7 +329,7 @@ class BDM:
             bdm += ctm + log2(n)
         return bdm
 
-    def bdm(self, X, normalize=False, raise_if_zero=True, check_data=True):
+    def bdm(self, X, normalized=False, raise_if_zero=True, check_data=True):
         """Approximate complexity of a dataset.
 
         Parameters
@@ -337,7 +337,7 @@ class BDM:
         X : array_like
             Dataset representation as a :py:class:`numpy.ndarray`.
             Number of axes must agree with the `ndim` attribute.
-        normalize : bool
+        normalized : bool
             Should BDM be normalized to be in the [0, 1] range.
         raise_if_zero : bool
             Should error be raised if BDM value is zero.
@@ -373,7 +373,7 @@ class BDM:
         """
         if check_data:
             self._check_data(X)
-        if normalize and isinstance(self.partition, PartitionCorrelated):
+        if normalized and isinstance(self.partition, PartitionCorrelated):
             raise NotImplementedError(
                 "normalized BDM not implemented for '{}' partition".format(
                     PartitionCorrelated.name
@@ -382,7 +382,7 @@ class BDM:
         cmx = self.compute_bdm(counter)
         if raise_if_zero and options.get('raise_if_zero') and cmx == 0:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
-        if normalize:
+        if normalized:
             min_cmx = self._get_min_bdm(X)
             max_cmx = self._get_max_bdm(X)
             cmx = (cmx - min_cmx) / (max_cmx - min_cmx)
@@ -397,7 +397,7 @@ class BDM:
         --------
         bdm : BDM method
         """
-        return self.bdm(X, normalize=True, **kwds)
+        return self.bdm(X, normalized=True, **kwds)
 
     def compute_ent(self, *counters):
         """Compute block entropy from counter.
@@ -429,7 +429,7 @@ class BDM:
             ent -= p*np.log2(p)
         return ent
 
-    def ent(self, X, normalize=False, check_data=True):
+    def ent(self, X, normalized=False, check_data=True):
         """Block entropy of a dataset.
 
         Parameters
@@ -437,7 +437,7 @@ class BDM:
         X : array_like
             Dataset representation as a :py:class:`numpy.ndarray`.
             Number of axes must agree with the `ndim` attribute.
-        normalize : bool
+        normalized : bool
             Should entropy be normalized to be in the [0, 1] range.
         check_data : bool
             Should data format be checked.
@@ -468,14 +468,14 @@ class BDM:
         """
         if check_data:
             self._check_data(X)
-        if normalize and isinstance(self.partition, PartitionCorrelated):
+        if normalized and isinstance(self.partition, PartitionCorrelated):
             raise NotImplementedError(
                 "normalized entropy not implemented for '{}' partition".format(
                     PartitionCorrelated.name
                 ))
         counter = self.lookup_and_count(X)
         ent = self.compute_ent(counter)
-        if normalize:
+        if normalized:
             min_ent = self._get_min_ent(X)
             max_ent = self._get_max_ent(X)
             ent = (ent - min_ent) / (max_ent - min_ent)
@@ -490,7 +490,7 @@ class BDM:
         --------
         ent : block entropy method
         """
-        return self.ent(X, normalize=True, **kwds)
+        return self.ent(X, normalized=True, **kwds)
 
     def _check_data(self, X):
         """Check if data is correctly formatted.

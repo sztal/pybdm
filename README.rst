@@ -30,19 +30,19 @@ it is based on are described in `this article <https://www.mdpi.com/1099-4300/20
 Installation
 ============
 
-Local development::
+Standard installation (stable)::
 
-    git clone https://github.com/sztal/pybdm
-    cd pybdm
-    pip install --editable .
+    pip install pybdm
 
 Development version installation::
 
     pip install git+https://github.com/sztal/pybdm.git
 
-Standard installation (not yet on *PyPI*)::
+Local development::
 
-    pip install bdm
+    git clone https://github.com/sztal/pybdm
+    cd pybdm
+    pip install --editable .
 
 
 Usage

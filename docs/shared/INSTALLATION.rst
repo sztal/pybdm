@@ -1,13 +1,13 @@
-Local development::
+Standard installation (stable)::
 
-    git clone https://github.com/sztal/pybdm
-    cd pybdm
-    pip install --editable .
+    pip install pybdm
 
 Development version installation::
 
     pip install git+https://github.com/sztal/pybdm.git
 
-Standard installation (not yet on *PyPI*)::
+Local development::
 
-    pip install pybdm
+    git clone https://github.com/sztal/pybdm
+    cd pybdm
+    pip install --editable .

@@ -20,10 +20,10 @@ class PerturbationExperiment:
 
     Attributes
     ----------
-    X : array_like
-        Dataset for perturbation analysis.
     bdm : BDM
         BDM object.
+    X : array_like (optional)
+        Dataset for perturbation analysis. May be set later.
     metric : {'bdm', 'ent'}
         Which metric to use for perturbing.
     """
@@ -44,6 +44,11 @@ class PerturbationExperiment:
             self.X = X
         else:
             self.set_data(X)
+
+    def __repr__(self):
+        cn = self.__class__.__name__
+        bdm = str(self.bdm)[1:-1]
+        return "<{}(metric={}) with {}>".format(cn, self.metric, bdm)
 
     @property
     def size(self):
@@ -68,6 +73,8 @@ class PerturbationExperiment:
         X : array_like
             Dataset to perturb.
         """
+        if not np.isin(np.unique(X), range(self.bdm.nsymbols)).all():
+            raise ValueError("'X' is malformed (too many or ill-mapped symbols)")
         self.X = X
         self._counter = self.bdm.lookup_and_count(X)
         if self.metric == 'bdm':
