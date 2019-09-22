@@ -1,6 +1,7 @@
 """Resources submodule with reference dataset containing
 precomputed approximated algorithmic complexity values for
-simple objects based on the *Coding Theorem Method*.
+simple objects based on *Coding Theorem Method*
+(see :doc:`theory`).
 
 All datasets' names use the following naming scheme: ``ctm-bX-dY``.
 
