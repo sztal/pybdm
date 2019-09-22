@@ -9,7 +9,7 @@ from joblib import Parallel, delayed
 from pybdm.bdm import BDM
 from pybdm.partitions import PartitionRecursive
 from pybdm.encoding import array_from_string
-from pybdm.utils import slice_dataset
+from pybdm.utils import decompose_dataset
 from pybdm.exceptions import BDMRuntimeWarning
 from pybdm.exceptions import CTMDatasetNotFoundError, BDMConfigurationError
 
@@ -168,6 +168,6 @@ class TestBDM:
         expected = bdm_d2.bdm(X)
         counters = Parallel(n_jobs=2) \
             (delayed(bdm_d2.decompose_and_count)(d)
-             for d in slice_dataset(X, (100, 100)))
+             for d in decompose_dataset(X, (100, 100)))
         output = bdm_d2.compute_bdm(*counters)
         assert output == approx(expected)

@@ -99,7 +99,7 @@ into a single BDM approximation of the algorithmic complexity of the dataset.
     import numpy as np
     from joblib import Parallel, delayed
     from pybdm import BDM
-    from pybdm.utils import slice_dataset
+    from pybdm.utils import decompose_dataset
 
     # Create a dataset (must be of integer type)
     X = np.ones((1000, 1000), dtype=int)
@@ -109,7 +109,7 @@ into a single BDM approximation of the algorithmic complexity of the dataset.
 
     # Compute counter objects in parallel
     counters = Parallel(n_jobs=4) \
-        (delayed(bdm.decompose_and_count)(d) for d in slice_dataset(X, (200, 200)))
+        (delayed(bdm.decompose_and_count)(d) for d in decompose_dataset(X, (200, 200)))
 
     # Compute BDM
     bdm.compute_bdm(*counters)

@@ -1,10 +1,25 @@
-"""Partition algorithm classes."""
+"""Partition algorithm classes.
+
+Partition algorithms are used during the decomposition stage of BDM
+(see :doc:`theory` and :py:mod:`pybdm.bdm`), in which datasets are sliced
+into blocks of appropriate sizes.
+
+Decomposition can be done in multiple ways that handles boundaries differently.
+This is why partition algorithms have to be properly configured,
+so it is well-specified what approach exactly is to be used.
+"""
 # pylint: disable=unused-argument
-from .utils import slice_dataset, iter_part_shapes
+from .utils import decompose_dataset, iter_part_shapes
 
 
 class _Partition:
-    """Partition algorithm base class."""
+    """Partition algorithm base class.
+
+    Attributes
+    ----------
+    shape : tuple
+        Blocks' shape.
+    """
     name = 'none'
 
     def __init__(self, shape):
@@ -26,6 +41,11 @@ class _Partition:
         ----------
         x : array_like
             Dataset of arbitrary dimensionality represented as a *Numpy* array.
+
+        Yields
+        ------
+        array_like
+            Dataset blocks.
         """
         cn = self.__class__.__name__
         raise NotImplementedError("'{}' is not meant for a direct use".format(cn))
@@ -41,6 +61,10 @@ class PartitionIgnore(_Partition):
     ----------
     shape : tuple
         Part shape.
+
+    Notes
+    -----
+    See :doc:`theory` for a detailed description.
     """
     name = 'ignore'
 
@@ -49,7 +73,7 @@ class PartitionIgnore(_Partition):
 
         .. automethod:: _Partition.decompose
         """
-        for part in slice_dataset(X, shape=self.shape, shift=0):
+        for part in decompose_dataset(X, shape=self.shape, shift=0):
             if part.shape == self.shape:
                 yield part
 
@@ -67,6 +91,10 @@ class PartitionCorrelated(PartitionIgnore):
         Part shape.
     shift : int (positive)
         Shift parameter for the sliding window.
+
+    Notes
+    -----
+    See :doc:`theory` for a detailed description.
 
     Raises
     ------
@@ -91,7 +119,7 @@ class PartitionCorrelated(PartitionIgnore):
 
         .. automethod:: _Partition.decompose
         """
-        for part in slice_dataset(X, shape=self.shape, shift=self.shift):
+        for part in decompose_dataset(X, shape=self.shape, shift=self.shift):
             if part.shape == self.shape:
                 yield part
 
@@ -113,6 +141,10 @@ class PartitionRecursive(_Partition):
         Minimum parts' length. Non-negative.
         In case of multidimensional objects it specifies minimum
         length of any single dimension.
+
+    Notes
+    -----
+    See :doc:`theory` for a detailed description.
     """
     name = 'recursive'
 
@@ -126,7 +158,7 @@ class PartitionRecursive(_Partition):
         return super().params + [ "min_length={}".format(self.min_length) ]
 
     def _decompose(self, X, shape):
-        for part in slice_dataset(X, shape=shape, shift=0):
+        for part in decompose_dataset(X, shape=shape, shift=0):
             if part.shape == shape:
                 yield part
             else:

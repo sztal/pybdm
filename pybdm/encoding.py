@@ -1,14 +1,14 @@
 """Encoding and decoding of arrays with fixed number of unique symbols.
 
-While computing BDM dataset parts have to be encoded into simple hashable objects
+While computing BDM dataset blocks have to be encoded into simple hashable objects
 such as strings or integers for efficient lookup of CTM values from reference
 datasets.
 
-In case of CTM dataset containing objects with several different dimensionalities
-string keys have to be used and this representation is used by
-:py:mod:`pybdm.partitions` functions at the moment.
+Currently string-based keys are used in CTM datasets.
+However, this may be changed to integer keys in the future
+in order to lower the memory footprint.
 
-Integer encoding can be used for easy generation of objects
+Integer encoding can be also used for easy generation of objects
 of fixed dimensionality as each such object using a fixed,
 finite alphabet of symbols can be uniquely mapped to an integer code.
 """

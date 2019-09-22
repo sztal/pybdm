@@ -10,6 +10,26 @@ from .ctmdata import CTM_DATASETS as _ctm_datasets, __name__ as _ctmdata_path
 
 
 def prod(seq):
+    """Product of a sequence of numbers.
+
+    Parameters
+    ----------
+    seq : sequence
+        A sequence of numbers.
+
+    Returns
+    -------
+    float or int
+        Product of numbers.
+
+    Notes
+    -----
+    This is defined as:
+
+    .. math::
+
+        \prod_{i=1}^n x_i
+    """
     mult = 1
     for x in seq:
         mult *= x
@@ -21,8 +41,6 @@ def iter_slices(X, shape, shift=0):
     Slicing is done in a way that ensures that only pieces
     on boundaries of the sliced dataset can have leftovers
     in regard to a specified shape.
-    This is very important for proper computing of BDM in the context
-    of parallel processing.
 
     Parameters
     ----------
@@ -92,8 +110,8 @@ def iter_part_shapes(X, shape, shift=0):
         part = tuple(s.stop - s.start for s in idx)
         yield part
 
-def slice_dataset(X, shape, shift=0):
-    """Slice a dataset into *n* pieces.
+def decompose_dataset(X, shape, shift=0):
+    """Decompose a dataset into blocks.
 
     Parameters
     ----------
@@ -108,13 +126,13 @@ def slice_dataset(X, shape, shift=0):
     Yields
     ------
     array_like
-        Dataset slices.
+        Dataset blocks.
 
     Examples
     --------
     >>> import numpy as np
     >>> X = np.ones((5, 3), dtype=int)
-    >>> [ x for x in slice_dataset(X, (3, 3)) ]
+    >>> [ x for x in decompose_dataset(X, (3, 3)) ]
     [array([[1, 1, 1],
            [1, 1, 1],
            [1, 1, 1]]), array([[1, 1, 1],
