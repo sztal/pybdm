@@ -30,7 +30,7 @@ setup(
     maintainer='Szymon Talaga',
     maintainer_email='stalaga@protonmail.com',
     url='https://github.com/sztal/pybdm',
-    packages=[ *find_packages() ],
+    packages=[ *find_packages(exclude=('tests',)) ],
     package_data={'pybdm': ['resources/*.pkl']},
     include_package_data=True,
     setup_requires=['pytest-runner'],

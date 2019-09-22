@@ -13,6 +13,7 @@ Next major release
 * Use integer-based conding of dataset blocks
   (to lower memory-footprint). This will be done only if it will be possible
   to use integer coding without significantly negative impact on the performance.
+* Configure automatic tests for OSX and Windows.
 
 Distant goals
 =============

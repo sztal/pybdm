@@ -54,8 +54,8 @@ Local development::
 Supported versions
 ------------------
 
-Python3.5+ is supported. Tests are run against Linux and OSX, but
-Windows should work as well.
+Python3.5+ is supported. Tests are run against Linux, but
+Windows and OSX should work as well.
 
 
 Usage
