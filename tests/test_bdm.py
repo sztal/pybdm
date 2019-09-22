@@ -6,9 +6,12 @@ import pytest
 from pytest import approx
 import numpy as np
 from joblib import Parallel, delayed
-from bdm.encoding import array_from_string
-from bdm.utils import slice_dataset
-from bdm.exceptions import BDMRuntimeWarning
+from pybdm.bdm import BDM
+from pybdm.partitions import PartitionRecursive
+from pybdm.encoding import array_from_string
+from pybdm.utils import decompose_dataset
+from pybdm.exceptions import BDMRuntimeWarning
+from pybdm.exceptions import CTMDatasetNotFoundError, BDMConfigurationError
 
 s0 = '0'*24
 s1 = '0'*12+'1'*12
@@ -49,6 +52,32 @@ with open(os.path.join(_dirpath, 'ent-b2-d4x4-test-input.tsv'), 'r') as stream:
 
 
 class TestBDM:
+
+    @pytest.mark.parametrize('ndim', (1, 2, 3))
+    @pytest.mark.parametrize('min_length', (2, 6, 12))
+    @pytest.mark.parametrize('nsymbols', (2, 9, 10))
+    @pytest.mark.parametrize('ctmname', (None, 'CTM-B2-D12', 'XXX'))
+    @pytest.mark.parametrize('warn_if_missing_ctm', (True, False))
+    def test_bdm_init(self, ndim, min_length, nsymbols, ctmname,
+                      warn_if_missing_ctm):
+        # pylint: disable=unused-variable,broad-except
+        try:
+            bdm1 = BDM(
+                ndim=ndim,
+                nsymbols=nsymbols,
+                ctmname=ctmname,
+                warn_if_missing_ctm=warn_if_missing_ctm
+            )
+            bdm1 = BDM(
+                ndim=ndim,
+                nsymbols=nsymbols,
+                partition=PartitionRecursive,
+                min_length=min_length,
+                ctmname=ctmname,
+                warn_if_missing_ctm=warn_if_missing_ctm
+            )
+        except Exception as exc:
+            assert isinstance(exc, (CTMDatasetNotFoundError, BDMConfigurationError))
 
     @pytest.mark.parametrize('X,expected', bdm1_test_input)
     def test_bdm_d1(self, bdm_d1, X, expected):
@@ -93,7 +122,17 @@ class TestBDM:
 
     @pytest.mark.parametrize('X,expected', [
         (np.ones((30,), dtype=int), 0),
-        (np.array([0,1,0,0,0,1,1,0,0,0,1,0,0,0,1], dtype=int), 0.648665654727082)
+        (np.array([0,1,0,0,0,1,1,0,0,0,1,0,0,0,1], dtype=int), 0.648665654727082),
+        (np.array([
+            0,0,0,1,1,1,1,0,1,1,0,1,1,1,0,1,1,0,0,1,0,1,1,0,1,
+            0,0,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1,0,0,0,0,1,0,
+            0,1,0,0,0,1,0,1,1,1,0,0,1,0,1,0,0,1,1,1,0,0,1,0,
+            1,0,0,0,1,0,1,0,0,1,1,0,1,0,0,0,0,0,1,0,1,1,1,0,
+            0,0,0,0,1,0,1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,0,0,
+            0,0,1,1,0,1,1,1,0,1,1,0,1,0,0,1,0,0,0,0,0,0,0,1,
+            0,0,0,1,0,1,0,1,0,1,0,1,1,1,1,1,1,0,0,0,1,1,1,1,0,
+            0,1,1,0,1,1,0,0,0,0,1,0,1,1,1,0,1,1,0,0,1,1,0,1,1
+        ], dtype=int), 0.8924514180488615)
     ])
     def test_nbdm_d1(self, bdm_d1, X, expected):
         output = bdm_d1.nbdm(X)
@@ -128,7 +167,7 @@ class TestBDM:
         X = np.ones((500, 500), dtype=int)
         expected = bdm_d2.bdm(X)
         counters = Parallel(n_jobs=2) \
-            (delayed(bdm_d2.lookup_and_count)(d)
-             for d in slice_dataset(X, (100, 100)))
+            (delayed(bdm_d2.decompose_and_count)(d)
+             for d in decompose_dataset(X, (100, 100)))
         output = bdm_d2.compute_bdm(*counters)
         assert output == approx(expected)

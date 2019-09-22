@@ -1,6 +1,7 @@
 """*PyTest* configuration and general purpose fixtures."""
 import pytest
-from bdm import BDM, BDMRecursive
+from pybdm import BDM
+from pybdm.partitions import PartitionRecursive
 
 
 def pytest_addoption(parser):
@@ -49,4 +50,4 @@ def bdm_d2():
 
 @pytest.fixture(scope='session')
 def bdm_d1_b9():
-    return BDMRecursive(ndim=1, min_length=1, nsymbols=9)
+    return BDM(ndim=1, nsymbols=9, partition=PartitionRecursive, min_length=1)

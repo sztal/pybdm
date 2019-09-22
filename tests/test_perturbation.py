@@ -5,9 +5,10 @@ from random import choice
 import pytest
 from pytest import approx
 import numpy as np
-from bdm.bdm import BDMBase
-from bdm.algorithms import PerturbationExperiment
-from bdm.utils import prod
+from pybdm.bdm import BDM
+from pybdm.partitions import PartitionCorrelated
+from pybdm.algorithms import PerturbationExperiment
+from pybdm.utils import prod
 
 
 @pytest.fixture(scope='function')
@@ -20,7 +21,7 @@ def perturbation(bdm_d2):
 def perturbation_overlap():
     np.random.seed(1001)
     X = np.random.randint(0, 2, (25, 25), dtype=int)
-    bdm = BDMBase(ndim=2, shift=1)
+    bdm = BDM(ndim=2, partition=PartitionCorrelated, shift=1)
     return PerturbationExperiment(bdm, X)
 
 @pytest.fixture(scope='function')
@@ -33,7 +34,7 @@ def perturbation_d1(bdm_d1):
 def perturbation_d1_overlap():
     np.random.seed(99)
     X = np.random.randint(0, 2, (100, ), dtype=int)
-    bdm = BDMBase(ndim=1, shift=1)
+    bdm = BDM(ndim=1, partition=PartitionCorrelated, shift=1)
     return PerturbationExperiment(bdm, X)
 
 @pytest.fixture(scope='function')
@@ -52,7 +53,7 @@ def perturbation_ent(bdm_d2):
 def perturbation_ent_overlap():
     np.random.seed(1001)
     X = np.random.randint(0, 2, (25, 25), dtype=int)
-    bdm = BDMBase(ndim=2, shift=1)
+    bdm = BDM(ndim=2, partition=PartitionCorrelated, shift=1)
     return PerturbationExperiment(bdm, X, metric='ent')
 
 @pytest.fixture(scope='function')
@@ -65,7 +66,7 @@ def perturbation_d1_ent(bdm_d1):
 def perturbation_d1_ent_overlap():
     np.random.seed(99)
     X = np.random.randint(0, 2, (100, ), dtype=int)
-    bdm = BDMBase(ndim=1, shift=1)
+    bdm = BDM(ndim=1, partition=PartitionCorrelated, shift=1)
     return PerturbationExperiment(bdm, X, metric='ent')
 
 
@@ -119,7 +120,7 @@ class TestPerturbationExperiment:
             symbols = [ s for s in range(perturbation.bdm.nsymbols) if s != current_value ]
             value = choice(symbols)
             X1[idx] = value
-        C1 = perturbation.bdm.lookup_and_count(X1)
+        C1 = perturbation.bdm.decompose_and_count(X1)
         if metric == 'bdm':
             x0 = perturbation.bdm.bdm(X0)
             x1 = perturbation.bdm.bdm(X1)

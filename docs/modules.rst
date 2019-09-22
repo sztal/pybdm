@@ -1,7 +1,7 @@
-bdm
-===
+pybdm
+=====
 
 .. toctree::
    :maxdepth: 4
 
-   bdm
+   pybdm

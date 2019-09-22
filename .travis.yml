@@ -1,20 +1,40 @@
 # Config file for automatic testing at travis-ci.org
-dist: bionic
 language: python
-
+dist: bionic
 python:
-  - "3.7"
-  - "3.6"
-#  - "3.5"
+  - 3.5
+  - 3.6
+  - 3.7
 
 # command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install:
   - pip install -r requirements.txt
   - pip install .
 
+# matrix:
+#   include:
+#   - os: osx
+#     language: minimal
+#     python: 3.7
+#     install:
+#       - pip3 install -r requirements.txt
+#       - pip3 install -e .[tests]
+#     script:
+#       - pytest --slow
+#   - os: windows
+#     language: minimal
+#     python:
+#       - "3.5"
+#       - "3.6"
+#       - "3.7"
+#     before_install:
+#     - choco install python3
+#     - export PATH="/c/Python37:/c/Python37/Scripts:$PATH"
+
 # command to run tests, e.g. python setup.py test
 script:
-  - pytest --slow --cov-report term --cov=bdm/ --cov=test/
+  - pytest --slow --cov-report term --cov=pybdm/ --cov=tests/
+  - pytest --pylint -m pylint
 
 after_success:
   - codecov

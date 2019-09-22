@@ -1,66 +1,3 @@
-=============================================================
-PyBDM: Python interface to the *Block Decomposition Method*
-=============================================================
-
-.. image:: https://badge.fury.io/py/pybdm.png
-    :target: http://badge.fury.io/py/pybdm
-
-.. image:: https://travis-ci.org/sztal/pybdm.svg?branch=master
-    :target: https://travis-ci.org/sztal/pybdm
-
-.. image:: https://codecov.io/gh/sztal/pybdm/branch/master/graph/badge.svg?branch=master
-    :target: https://codecov.io/gh/sztal/pybdm
-
-.. image:: https://readthedocs.org/projects/pybdm-docs/badge/?version=latest
-    :target: https://pybdm-docs.readthedocs.io/en/latest/?badge=latest
-    :alt: Documentation Status
-
-The Block Decomposition Method (BDM) approximates algorithmic complexity
-of a dataset of arbitrary size, that is, the length of the shortest computer
-program that generates it. This is not trivial as algorithmic complexity
-is not a computable quantity in the general case and estimation of
-algorithmic complexity of a dataset can be very useful as it points to
-mechanistic connections between elements of a system, even such that
-do not yield any regular statistical patterns that can be captured with
-more traditional tools based on probability theory and information theory.
-
-Currently 1D and 2D binary arrays are supported, as well as 1D arrays
-with 4, 5, 6 and 9 discrete symbols.
-
-BDM and the necessary parts of the algorithmic information theory
-it is based on are described in `this article <https://www.mdpi.com/1099-4300/20/8/605>`_.
-
-See the official documentation_ for more information.
-
-
-Installation
-============
-
-Standard installation (stable)::
-
-    pip install pybdm
-
-Development version installation::
-
-    pip install git+https://github.com/sztal/pybdm.git
-
-Local development::
-
-    git clone https://github.com/sztal/pybdm
-    cd pybdm
-    pip install --editable .
-
-
-Supported versions
-------------------
-
-Python3.5+ is supported. Tests are run against Linux, but
-Windows and OSX should work as well.
-
-
-Usage
-=====
-
 The BDM is implemented using the object-oriented approach and expects
 input represented as `Numpy <http://www.numpy.org/>`__ arrays of integer type.
 
@@ -68,9 +5,12 @@ input represented as `Numpy <http://www.numpy.org/>`__ arrays of integer type.
 
    ``BDM`` objects operate exclusively on **integer arrays**.
    Hence, any alphabet must be first mapped to a set of integers ranging
-   from ``0`` to ``k``.
+   from ``0`` to ``k``. Currently only standard :py:mod:`numpy` arrays
+   are accepted. However, in general it is possible to conceive of a BDM
+   variant optimized for sparse array. We plan provide in the releas.
 
-Detailed usage examples can be found in the official documentation_.
+Detailed description of the design of our implementation of BDM
+can be found in :doc:`/theory`.
 
 
 Binary sequences (1D)
@@ -132,7 +72,6 @@ Non-binary sequences (1D)
 
     # Compute BDM
     bdm.bdm(X)
-
 
 
 Parallel processing
@@ -222,12 +161,17 @@ to be noise since they extend the system's description length.
     values = np.array([-1, -1], dtype=int)
     delta_bdm = perturbation.run(idx, values, keep_changes=True)
 
-
-Authors & Contact
-=================
-
-* Szymon Talaga <stalaga@protonmail.com>
-* Kostas Tsampourakis <kostas.tsampourakis@gmail.com>
-
-
-.. _documentation: http://pybdm-docs.rtfd.org
+    # Here is an example applied to an adjacency matrix
+    # (only 1's are perturbed and switched to 0's)
+    # (so perturbations correspond to edge deletions)
+    X = np.random.randint(0, 2, (100, 100))
+    # Indices of nonzero entries in the matrix
+    idx = np.argwhere(X)
+    # PerturbationExperiment can be instantiated without passing data
+    pe = PerturbationExperiment(bdm, metric='bdm')
+    # data can be added later
+    pe.set_data(X)
+    # Run experiment and perturb edges
+    # No values argument is passed so perturbations automatically switch
+    # values to other values from the alphabet (in this case 1 --> 0)
+    delta_bdm = pe.run(idx)
