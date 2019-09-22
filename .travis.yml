@@ -1,5 +1,4 @@
 # Config file for automatic testing at travis-ci.org
-dist: bionic
 language: python
 
 python:
@@ -11,6 +10,18 @@ python:
 install:
   - pip install -r requirements.txt
   - pip install .
+
+matrix:
+  include:
+  - os: linux
+    dist: bionic
+  - os: osx
+    language: minimal
+  - os: windows
+    language: minimal
+    before_install:
+    - choco install python3
+    - export PATH="/c/Python37:/c/Python37/Scripts:$PATH"
 
 # command to run tests, e.g. python setup.py test
 script:
