@@ -43,8 +43,7 @@ setup(
         'codecov>=2.0.15',
         'pytest-cov>=2.7.1',
         'tox-conda>=0.2.0',
-        'joblib>=0.13.0',
-        'sphinxcontrib-bibtex>=0.4.2'
+        'joblib>=0.13.0'
     ],
     test_suite='tests',
     install_requires=[
