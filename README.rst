@@ -1,5 +1,5 @@
 =============================================================
-PyBDM: Python interface to the *Block Deincomposition Method*
+PyBDM: Python interface to the *Block Decomposition Method*
 =============================================================
 
 .. image:: https://badge.fury.io/py/pybdm.png
@@ -25,6 +25,8 @@ with 4, 5, 6 and 9 discrete symbols.
 
 BDM and the necessary parts of the algorithmic information theory
 it is based on are described in `this article <https://www.mdpi.com/1099-4300/20/8/605>`_.
+
+See the official documentation_ for more information.
 
 
 Installation
@@ -57,7 +59,7 @@ input represented as `Numpy <http://www.numpy.org/>`__ arrays of integer type.
    Hence, any alphabet must be first mapped to a set of integers ranging
    from ``0`` to ``k``.
 
-Detailed usage examples can be found in the official documentation.
+Detailed usage examples can be found in the official documentation_.
 
 
 Binary sequences (1D)
@@ -216,3 +218,5 @@ Authors & Contact
 * Szymon Talaga <stalaga@protonmail.com>
 * Kostas Tsampourakis <kostas.tsampourakis@gmail.com>
 
+
+.. _documentation: http://pybdm-docs.rtfd.org

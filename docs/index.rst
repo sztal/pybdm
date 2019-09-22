@@ -15,7 +15,7 @@
    modules
 
 =============================================================
-PyBDM: Python interface to the *Block Deincomposition Method*
+PyBDM: Python interface to the *Block Decomposition Method*
 =============================================================
 
 .. image:: https://badge.fury.io/py/pybdm.png

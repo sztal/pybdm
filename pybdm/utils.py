@@ -10,6 +10,7 @@ from .ctmdata import CTM_DATASETS as _ctm_datasets, __name__ as _ctmdata_path
 
 
 def prod(seq):
+    # pylint: disable=anomalous-backslash-in-string
     """Product of a sequence of numbers.
 
     Parameters
