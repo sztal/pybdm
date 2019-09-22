@@ -1,4 +1,4 @@
-"""Core algorithms operating on ``BDM`` objects."""
+"""Algorithms based on ``BDM`` objects."""
 from itertools import product
 from random import choice
 import numpy as np
@@ -12,20 +12,40 @@ class PerturbationExperiment:
     parts of a system having some causal significance as opposed
     to noise parts.
 
-    Parts which after yield negative contribution to the overall
+    Parts which when perturbed yield negative contribution to the overall
     complexity after change are likely to be important for the system,
     since their removal make it more noisy. On the other hand parts that yield
     positive contribution to the overall complexity after change are likely
-    to be noise since they extend the system's description length.
+    to be noise since they elongate the system's description length.
 
     Attributes
     ----------
     bdm : BDM
-        BDM object.
+        BDM object. It has to be configured properly to handle
+        the dataset that is to be studied.
     X : array_like (optional)
         Dataset for perturbation analysis. May be set later.
     metric : {'bdm', 'ent'}
         Which metric to use for perturbing.
+
+    See also
+    --------
+    pybdm.bdm.BDM : BDM computations
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from pybdm import BDM, PerturbationExperiment
+    >>> X = np.random.randint(0, 2, (100, 100))
+    >>> bdm = BDM(ndim=2)
+    >>> pe = PerturbationExperiment(bdm, metric='bdm')
+    >>> pe.set_data(X)
+    >>> idx = np.argwhere(X) # Perturb only ones (1 --> 0)
+    >>> delta_bdm = pe.run(idx)
+    >>> len(delta_bdm) == idx.shape[0]
+    True
+
+    More examples can be found in :doc:`usage`.
     """
     def __init__(self, bdm, X=None, metric='bdm'):
         """Initialization method."""
@@ -66,7 +86,7 @@ class PerturbationExperiment:
         return self.X.ndim
 
     def set_data(self, X):
-        """Set dataset.
+        """Set dataset for the perturbation experiment.
 
         Parameters
         ----------
@@ -76,7 +96,7 @@ class PerturbationExperiment:
         if not np.isin(np.unique(X), range(self.bdm.nsymbols)).all():
             raise ValueError("'X' is malformed (too many or ill-mapped symbols)")
         self.X = X
-        self._counter = self.bdm.lookup_and_count(X)
+        self._counter = self.bdm.decompose_and_count(X)
         if self.metric == 'bdm':
             self._value = self.bdm.compute_bdm(self._counter)
         elif self.metric == 'ent':

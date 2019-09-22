@@ -120,7 +120,7 @@ class TestPerturbationExperiment:
             symbols = [ s for s in range(perturbation.bdm.nsymbols) if s != current_value ]
             value = choice(symbols)
             X1[idx] = value
-        C1 = perturbation.bdm.lookup_and_count(X1)
+        C1 = perturbation.bdm.decompose_and_count(X1)
         if metric == 'bdm':
             x0 = perturbation.bdm.bdm(X0)
             x1 = perturbation.bdm.bdm(X1)

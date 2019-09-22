@@ -99,6 +99,8 @@ where :math:`i` indexes the set of all unique slices
 (i.e. CTM values are taken only once for each unique slice)
 and :math:`n_i` correspond to the slices' numbers of occurences.
 
+Available CTM datasets are listed in :py:mod:`pybdm.ctmdata`.
+
 
 Boundary conditions
 -------------------

@@ -6,10 +6,10 @@ of a block decomposition method as well as running actual computations
 approximating algorithmic complexity of given datasets.
 
 Configuration step is necessary for specifying dimensionality of allowed
-datasets, encoding of reference CTM data as well as
+datasets, reference CTM data as well as
 boundary conditions for block decomposition etc. This is why BDM
-is implemented in object-oriented fashion, an instance can be first configured
-properly and then it exposes a public method :py:meth:`pybdm.BDM.bdm`
+is implemented in an object-oriented fashion, so an instance can be first
+configured properly and then it exposes a public method :py:meth:`BDM.bdm`
 for computing approximated complexity via BDM.
 """
 # pylint: disable=protected-access
@@ -30,10 +30,6 @@ from .exceptions import CTMDatasetNotFoundError, BDMConfigurationError
 class BDM:
     """Block decomposition method.
 
-    Block decomposition method is dependent on a reference CTM dataset
-    with precomputed algorithmic complexity for small objects of a given
-    dimensionality approximated with the *Coding Theorem Method* (CTM).
-
     Attributes
     ----------
     ndim : int
@@ -42,62 +38,61 @@ class BDM:
         Number of symbols in the alphabet.
     partition : Partition class
         Partition algorithm class object.
-        The class is called with the `shape` attribute is determined
+        The class is called with the `shape` attribute determined
         automatically if not passed and other attributes passed via ``**kwds``.
     ctmname : str
         Name of the CTM dataset. If ``None`` then a CTM dataset is selected
         automatically based on `ndim` and `nsymbols`.
     warn_if_missing_ctm : bool
-        Should ``BDMRuntimeWarning`` be sent in case there is missing CTM value.
-        Some CTM values may be missing for larger alphabets as it is
+        Should ``BDMRuntimeWarning`` be sent in the case there is missing
+        CTM value. Some CTM values may be missing for larger alphabets as it is
         computationally infeasible to explore entire parts space.
         Missing CTM values are imputed with mean CTM complexities
         over all parts of a given shape.
-        This is can be also disabled globally with the global option
+        This can be also disabled globally with the global option
         of the same name, i.e. ``pybdm.options.set(warn_if_missing_ctm=False)``.
-
-
-    Overview
-    --------
-    Block decomposition method is implemented using the *split-apply-combine*
-    pipeline approach. First a dataset is partitioned into parts with dimensions
-    appropriate for a selected data dimensionality and corresponding
-    reference lookup table of CTM value. Then CTM values for all parts
-    are extracted. Finally CTM values are aggregated to a single
-    approximation of complexity for the entire dataset.
-    This stepwise approach makes the implementation modular,
-    so every step can be customized during the configuration of a `BDM` object
-    or by subclassing.
-
-    **Stage methods**
-
-    The *split-apply-combine* approach is implemented through
-    stage methods. Stage methods contain the main logic
-    of the *Block Decomposition Method* and its different flavours
-    depending on boundary conditions etc.
-    In the first stage an input dataset is partitioned into parts of shape
-    appropriate for the selected CTM dataset (split stage).
-    Next, approximate complexity for parts based on the *Coding Theorem Method*
-    is looked up in the reference (apply stage) dataset.
-    Finally, values for individual parts are aggregated into a final BDM value
-    (combine stage). The aggregate stage is divided into two substages
-    in order to allow easy parallel and/or distributed computations.
-    Hence, there is a method that counts unique slices,
-    and a method that aggregates a counter object(s) into a final BDM value.
-
-    The general principle is that specialized *BDM* classes with specific
-    boundary conditions should extend the `BDMBase` class
-    (or other specialized ``BDM`` class) and implement boundary
-    conditions by extending stage methods. All configuration parameters
-    for stage methods should be stored within an instance to ensure
-    consistent behaviour of advanced algorithms operating on BDM objects
-    (such as perturbation algorithms).
+    raise_if_zero : bool
+        Should error be raised if BDM value is zero.
+        Zero value indicates that a dataset could have incorrect dimensions.
+        This can be also disabled globally with the global option
+        of the same name, i.e. ``pybdm.options.set(raise_if_zero=False)``.
 
     Notes
     -----
-    Currently CTM values are computed only for 1D strings of length up to 12
-    elements based on alphabets with 2, 4, 5, 6 and 9 symbols as well as
-    for symmetric binary matrices of size up to 4-by-4.
+    Block decomposition method in **PyBDM** is implemented in an object-oriented
+    fashion. This design choice was dictated by the fact that BDM can not be
+    applied willy-nilly to any dataset, but has to be configured for a particular
+    type of data (e.g. binary matrices). Hence, it is more convenient to first
+    configure and instatiate a particular instance of BDM and the apply
+    it freely to data instead of passing a lot of arguments at every call.
+
+    BDM has also natural structure corresponding to the so-called
+    *split-apply-combine* strategy in data analysis.
+    First, a large dataset it decomposed into smaller block for which
+    precomputed CTM values can be efficiently looked up.
+    Then CTM values for slices are aggregated in a theory-informed way
+    into a global approximation of complexity of the full dataset. Thus,
+    BDM computations naturally decomposes into four stages:
+
+    #. **Partition (decomposition) stage.** First a dataset is decomposed
+       into block. This is done by the :py:meth:`decompose` method.
+       The method itself is dependent on the `partition` attribute which points
+       to a :py:mod:`pybdm.partitions` object, which implements and configures
+       a particular  variant of the decomposition algorithm.
+       Detailed description of the available algorithms can be found in
+       :doc:`theory`.
+    #. **Lookup stage.** At this stage CTM values for blocks are looked up.
+       This is when the CTM reference dataset is used.
+       It is implemented in the :py:meth`lookup` method.
+    #. **Count stage.** Unique dataset blocks are counted and arranged in
+       an efficient data structure together with their CTM values.
+    #. **Aggregate stage.** Final BDM value is computed based on block
+       counter data structure.
+
+    See also
+    --------
+    pybdm.ctmdata : available CTM datasets
+    pybdm.partitions : available partition and boundary condition classes
     """
     _ndim_to_ctm = {
         # 1D datasets
@@ -111,14 +106,13 @@ class BDM:
     }
 
     def __init__(self, ndim, nsymbols=2, shape=None, partition=PartitionIgnore,
-                 ctmname=None, warn_if_missing_ctm=True, **kwds):
+                 ctmname=None, warn_if_missing_ctm=True, raise_if_zero=True, **kwds):
         """Initialization method.
 
         Parameters
         ----------
         shape : tuple
             Part shape to be passed to the partition algorithm.
-            Used if a partition algorithm class is passed.
         **kwds :
             Other keyword arguments passed to a partition algorithm class.
 
@@ -155,6 +149,7 @@ class BDM:
         self._ctm = ctm
         self._ctm_missing = ctm_missing
         self.warn_if_missing_ctm = warn_if_missing_ctm
+        self.raise_if_zero = raise_if_zero
         self.partition = partition(shape=shape, **kwds)
 
     def __repr__(self):
@@ -165,7 +160,7 @@ class BDM:
         )
 
     def decompose(self, X):
-        """Standard partition stage function.
+        """Decompose a dataset into blocks.
 
         Parameters
         ----------
@@ -175,12 +170,12 @@ class BDM:
         Yields
         ------
         array_like
-            Dataset parts.
+            Dataset blocks.
 
         Raises
         ------
         AttributeError
-            If parts' `shape` and dataset's shape have different numbers of axes.
+            If blocks' `shape` and dataset's shape have different numbers of axes.
 
 
         **Acknowledgments**
@@ -198,15 +193,15 @@ class BDM:
         """
         yield from self.partition.decompose(X)
 
-    def lookup(self, parts):
-        """Lookup CTM values for parts in a reference dataset.
+    def lookup(self, blocks, lookup_ctm=True):
+        """Lookup CTM values for blocks in a reference dataset.
 
         Parameters
         ----------
-        parts : sequence
+        blocks : sequence
             Ordered sequence of dataset parts.
-        ctm : dict
-            Reference CTM dataset.
+        lookup_ctm : bool
+            Should CTM values be looked up.
 
         Yields
         ------
@@ -233,9 +228,12 @@ class BDM:
         >>> [ x for x in bdm.lookup(parts) ] # doctest: +FLOAT_CMP
         [('111111111111', 25.610413747641715)]
         """
-        for part in parts:
-            sh = part.shape
-            key = string_from_array(part)
+        for block in blocks:
+            sh = block.shape
+            key = string_from_array(block)
+            if not lookup_ctm:
+                yield key, None
+                continue
             key_n = normalize_key(key)
             try:
                 cmx = self._ctm[sh][key_n]
@@ -248,8 +246,8 @@ class BDM:
                     warnings.warn(msg, BDMRuntimeWarning, stacklevel=2)
             yield key, cmx
 
-    def aggregate(self, ctms):
-        """Combine CTM of parts into BDM value.
+    def count(self, ctms):
+        """Count unique blocks.
 
         Parameters
         ----------
@@ -258,8 +256,8 @@ class BDM:
 
         Returns
         -------
-        float
-            BDM value.
+        Counter
+            Set of unique blocks with their CTM values and numbers of occurences.
 
         Examples
         --------
@@ -267,20 +265,22 @@ class BDM:
         >>> data = np.ones((24, ), dtype=int)
         >>> parts = bdm.decompose(data)
         >>> ctms = bdm.lookup(parts)
-        >>> bdm.aggregate(ctms) # doctest: +FLOAT_CMP
+        >>> bdm.count(ctms) # doctest: +FLOAT_CMP
         Counter({('111111111111', 25.610413747641715): 2})
         """
         counter = Counter(ctms)
         return counter
 
-    def lookup_and_count(self, X):
-        """Count parts and assign complexity values.
+    def decompose_and_count(self, X, lookup_ctm=True):
+        """Decompose and count blocks.
 
         Parameters
         ----------
         X : array_like
             Dataset representation as a :py:class:`numpy.ndarray`.
             Number of axes must agree with the `ndim` attribute.
+        lookup_ctm : bool
+            Should CTM values be looked up.
 
         Returns
         -------
@@ -288,20 +288,25 @@ class BDM:
             Lookup table mapping 2-tuples with string keys and CTM values
             to numbers of occurences.
 
+        Notes
+        -----
+        This is equivalent to calling :py:meth:`decompose`,
+        :py:meth:`lookup` and :py:meth:`count`.
+
         Examples
         --------
         >>> import numpy as np
         >>> bdm = BDM(ndim=1)
-        >>> bdm.lookup_and_count(np.ones((12, ), dtype=int)) # doctest: +FLOAT_CMP
+        >>> bdm.decompose_and_count(np.ones((12, ), dtype=int)) # doctest: +FLOAT_CMP
         Counter({('111111111111', 25.610413747641715): 1})
         """
-        parts = self.decompose(X)
-        ctms = self.lookup(parts)
-        counter = self.aggregate(ctms)
+        blocks = self.decompose(X)
+        blocks = self.lookup(blocks, lookup_ctm=lookup_ctm)
+        counter = self.count(blocks)
         return counter
 
     def compute_bdm(self, *counters):
-        """Compute BDM approximation.
+        """Approximate Kolmogorov complexity based on the BDM formula.
 
         Parameters
         ----------
@@ -312,6 +317,10 @@ class BDM:
         -------
         float
             Approximate algorithmic complexity.
+
+        Notes
+        -----
+        Detailed description can be found in :doc:`theory`.
 
         Examples
         --------
@@ -329,8 +338,8 @@ class BDM:
             bdm += ctm + log2(n)
         return bdm
 
-    def bdm(self, X, normalized=False, raise_if_zero=True, check_data=True):
-        """Approximate complexity of a dataset.
+    def bdm(self, X, normalized=False, check_data=True):
+        """Approximate complexity of a dataset with BDM.
 
         Parameters
         ----------
@@ -339,9 +348,6 @@ class BDM:
             Number of axes must agree with the `ndim` attribute.
         normalized : bool
             Should BDM be normalized to be in the [0, 1] range.
-        raise_if_zero : bool
-            Should error be raised if BDM value is zero.
-            Zero value indicates that a dataset could have incorrect dimensions.
         check_data : bool
             Should data format be checked.
             May be disabled to gain some speed when calling multiple times.
@@ -364,6 +370,10 @@ class BDM:
         ValueError
             If computed BDM value is 0 and `raise_if_zero` is ``True``.
 
+        Notes
+        -----
+        Detailed description can be found in :doc:`theory`.
+
         Examples
         --------
         >>> import numpy as np
@@ -378,9 +388,9 @@ class BDM:
                 "normalized BDM not implemented for '{}' partition".format(
                     PartitionCorrelated.name
                 ))
-        counter = self.lookup_and_count(X)
+        counter = self.decompose_and_count(X)
         cmx = self.compute_bdm(counter)
-        if raise_if_zero and options.get('raise_if_zero') and cmx == 0:
+        if self.raise_if_zero and options.get('raise_if_zero') and cmx == 0:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
         if normalized:
             min_cmx = self._get_min_bdm(X)
@@ -400,7 +410,7 @@ class BDM:
         return self.bdm(X, normalized=True, **kwds)
 
     def compute_ent(self, *counters):
-        """Compute block entropy from counter.
+        """Compute block entropy from a counter obejct.
 
         Parameters
         ----------
@@ -473,7 +483,7 @@ class BDM:
                 "normalized entropy not implemented for '{}' partition".format(
                     PartitionCorrelated.name
                 ))
-        counter = self.lookup_and_count(X)
+        counter = self.decompose_and_count(X, lookup_ctm=False)
         ent = self.compute_ent(counter)
         if normalized:
             min_ent = self._get_min_ent(X)

@@ -135,6 +135,13 @@ compute so-called counter objects (final BDM computation operates on such object
 in parallel in 4 independent processes, and aggregate the results
 into a single BDM approximation of the algorithmic complexity of the dataset.
 
+.. highlights::
+
+    Remember that data has to be sliced correctly during parallelization
+    in order to ensure fully correct BDM computations. That is, all slices
+    except lower and right boundaries have to be decomposable without
+    any boundary leftovers by the selected decomposition algorithm.
+
 .. code-block:: python
 
     import numpy as np
@@ -150,7 +157,7 @@ into a single BDM approximation of the algorithmic complexity of the dataset.
 
     # Compute counter objects in parallel
     counters = Parallel(n_jobs=4) \
-        (delayed(bdm.lookup_and_count)(d) for d in slice_dataset(X, (200, 200)))
+        (delayed(bdm.decompose_and_count)(d) for d in slice_dataset(X, (200, 200)))
 
     # Compute BDM
     bdm.compute_bdm(*counters)

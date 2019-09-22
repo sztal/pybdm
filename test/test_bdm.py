@@ -167,7 +167,7 @@ class TestBDM:
         X = np.ones((500, 500), dtype=int)
         expected = bdm_d2.bdm(X)
         counters = Parallel(n_jobs=2) \
-            (delayed(bdm_d2.lookup_and_count)(d)
+            (delayed(bdm_d2.decompose_and_count)(d)
              for d in slice_dataset(X, (100, 100)))
         output = bdm_d2.compute_bdm(*counters)
         assert output == approx(expected)

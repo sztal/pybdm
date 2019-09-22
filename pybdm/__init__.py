@@ -1,11 +1,10 @@
-"""Approximation of algorithmic complexity by Block Decomposition Method.
+"""**PyBDM:** Block Decomposition Method
 
 This package provides the :py:class:`pybdm.BDM` class for computing approximated
-algorithmic complexity of arbitrary binary 1D and 2D arrays based
-on the *Block Decomposition Method* (**BDM**).  The relevant theory
-is described in
-:cite:`soler-toscano_calculating_2014` and
-:cite:`zenil_decomposition_2018`.
+algorithmic complexity of arbitrarily large binary 1D and 2D arrays
+as well as 1D arrays with 4, 5, 6 or 9 unique symbols based
+on the *Block Decomposition Method* (**BDM**).
+Theory and the design of the package are described in :doc:`theory`.
 """
 from .bdm import BDM
 from .partitions import PartitionIgnore, PartitionRecursive, PartitionCorrelated
