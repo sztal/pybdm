@@ -1,5 +1,6 @@
 # Config file for automatic testing at travis-ci.org
 language: python
+dist: bionic
 python:
   - 3.5
   - 3.6
@@ -12,12 +13,6 @@ install:
 
 matrix:
   include:
-  - os: linux
-    dist: bionic
-    python:
-      - "3.5"
-      - "3.6"
-      - "3.7"
   - os: osx
     language: minimal
     python:
