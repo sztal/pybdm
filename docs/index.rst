@@ -12,6 +12,7 @@
    contributing
    authors
    history
+   roadmap
    modules
 
 =============================================================

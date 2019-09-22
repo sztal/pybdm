@@ -15,12 +15,12 @@ matrix:
   include:
   - os: osx
     language: minimal
-    python:
-      - "3.5"
-      - "3.6"
-      - "3.7"
-    before_install:
-      - pip install --upgrade pip
+    python: 3.7
+    install:
+      - pip3 install -r requirements.txt
+      - pip3 install -e .[tests]
+    script:
+      - pytest --slow
   # - os: windows
   #   language: minimal
   #   python:
@@ -33,7 +33,8 @@ matrix:
 
 # command to run tests, e.g. python setup.py test
 script:
-  - pytest --slow --cov-report term --cov=pybdm/ --cov=test/
+  - pytest --slow --cov-report term --cov=pybdm/ --cov=tests/
+  - pytest --pylint -m pylint
 
 after_success:
   - codecov
