@@ -27,6 +27,10 @@ PyBDM: Python interface to the *Block Decomposition Method*
 .. image:: https://codecov.io/gh/sztal/pybdm/branch/master/graph/badge.svg?branch=master
     :target: https://codecov.io/gh/sztal/pybdm
 
+.. image:: https://readthedocs.org/projects/pybdm-docs/badge/?version=latest
+    :target: https://pybdm-docs.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
 .. include:: shared/THEORY.rst
 
 Installation
