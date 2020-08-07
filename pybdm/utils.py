@@ -41,7 +41,7 @@ def iter_slices(X, shape, shift=0):
 
     Slicing is done in a way that ensures that only pieces
     on boundaries of the sliced dataset can have leftovers
-    in regard to a specified shape.
+    with respect to a specified shape.
 
     Parameters
     ----------
@@ -71,11 +71,13 @@ def iter_slices(X, shape, shift=0):
         raise AttributeError(
             "dataset and slice shape does not have the same number of axes"
         )
+
     if shift <= 0:
         shift = shape[0]
         data_shape = X.shape
     else:
         data_shape = tuple(max(x - s + 1, 0) for x, s in zip(X.shape, shape))
+
     start_idx = product(*(range(0, k, shift) for k in data_shape))
     for start in start_idx:
         yield tuple(

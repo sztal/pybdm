@@ -44,19 +44,19 @@ class BDM:
         Name of the CTM dataset. If ``None`` then a CTM dataset is selected
         automatically based on `ndim` and `nsymbols`.
         In most cases one should go with the automatic default.
-    warn_if_missing_ctm : bool
+    warn_if_missing_ctm : bool, optional
         Should ``BDMRuntimeWarning`` be sent in the case there is missing
         CTM value. Some CTM values may be missing for larger alphabets as it is
         computationally infeasible to explore entire parts space.
         Missing CTM values are imputed with the maximum available CTM value
         plus ``1`` as unexplored parts are these of highest complexity.
-        This can be also disabled globally with the global option
-        of the same name, i.e. ``pybdm.options.set(warn_if_missing_ctm=False)``.
-    raise_if_zero : bool
+        If undefined then a global option of the same name,
+        i.e. ``pybdm.options.set(warn_if_missing_ctm=False)``.
+    raise_if_zero : bool, optional
         Should error be raised if BDM value is zero.
         Zero value indicates that a dataset could have incorrect dimensions.
-        This can be also disabled globally with the global option
-        of the same name, i.e. ``pybdm.options.set(raise_if_zero=False)``.
+        If undefined then a global option of the same name,
+        i.e. ``pybdm.options.set(raise_if_zero=False)``.
 
     Notes
     -----
@@ -107,7 +107,7 @@ class BDM:
     }
 
     def __init__(self, ndim, nsymbols=2, shape=None, partition=PartitionIgnore,
-                 ctmname=None, warn_if_missing_ctm=True, raise_if_zero=True, **kwds):
+                 ctmname=None, warn_if_missing_ctm=None, raise_if_zero=None, **kwds):
         """Initialization method.
 
         Parameters
@@ -153,9 +153,31 @@ class BDM:
         ctm, ctm_missing = get_ctm_dataset(self.ctmname)
         self._ctm = ctm
         self._ctm_missing = ctm_missing
-        self.warn_if_missing_ctm = warn_if_missing_ctm
-        self.raise_if_zero = raise_if_zero
+        self._warn_if_missing_ctm = warn_if_missing_ctm
+        self._raise_if_zero = raise_if_zero
         self.partition = partition(shape=shape, **kwds)
+
+    # Option setters and getters ----------------------------------------------
+
+    @property
+    def warn_if_missing_ctm(self):
+        if self._warn_if_missing_ctm is not None:
+            return self._warn_if_missing_ctm
+        return options.get('warn_if_missing_ctm')
+    @warn_if_missing_ctm.setter
+    def warn_if_missing_ctm(self, value):
+        self._warn_if_missing_ctm = value
+
+    @property
+    def raise_if_zero(self):
+        if self._raise_if_zero is not None:
+            return self._raise_if_zero
+        return options.get('raise_if_zero')
+    @raise_if_zero.setter
+    def raise_if_zero(self, value):
+        self._raise_if_zero = value
+
+    # -------------------------------------------------------------------------
 
     def __repr__(self):
         partition = str(self.partition)[1:-1]
@@ -207,6 +229,8 @@ class BDM:
             Ordered sequence of dataset parts.
         lookup_ctm : bool
             Should CTM values be looked up.
+            This is used only for calculating entropy
+            in which case CTM values are not needed.
 
         Yields
         ------
