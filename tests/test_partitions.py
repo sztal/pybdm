@@ -5,7 +5,7 @@ from pybdm.partitions import PartitionIgnore, PartitionCorrelated, PartitionRecu
 
 
 def _test_decompose(partition, X, expected):
-    output = [ p for p in partition.decompose(X) ]
+    output = list(partition.decompose(X))
     assert len(output) == len(expected)
     assert all(np.array_equal(o, e) for o, e in zip(output, expected))
 

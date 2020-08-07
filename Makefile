@@ -29,7 +29,8 @@ clean-misc:
 	rm -f .coverage*
 
 lint:
-	py.test --pylint -m pylint
+	pylint pybdm
+	pylint tests
 
 test:
 	py.test

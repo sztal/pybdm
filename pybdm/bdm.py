@@ -514,7 +514,7 @@ class BDM:
             raise ValueError("'X' has more than {} unique symbols".format(
                 self.nsymbols
             ))
-        valid_symbols = np.array([ _ for _ in range(self.nsymbols) ])
+        valid_symbols = np.array(list(range(self.nsymbols)))
         bad_symbols = symbols[~np.isin(symbols, valid_symbols)]
         if bad_symbols.size > 0:
             raise ValueError("'X' contains symbols outside of [0, {}]: {}".format(

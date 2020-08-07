@@ -258,7 +258,7 @@ class PerturbationExperiment:
         """
         if idx is None:
             indexes = [ range(k) for k in self.X.shape ]
-            idx = np.array([ x for x in product(*indexes) ], dtype=int)
+            idx = np.array(list(product(*indexes)), dtype=int)
         if values is None:
             values = np.full((idx.shape[0], ), -1, dtype=int)
         return np.apply_along_axis(
