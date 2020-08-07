@@ -12,3 +12,4 @@ TODO (v1.0.0)
 8. Entropy should count the actual number of bits and use different bases.
 9. Add more tests.
 10. Check and update documentation.
+11. Add functionalities for using custom CTM datasets

@@ -43,12 +43,13 @@ class BDM:
     ctmname : str
         Name of the CTM dataset. If ``None`` then a CTM dataset is selected
         automatically based on `ndim` and `nsymbols`.
+        In most cases one should go with the automatic default.
     warn_if_missing_ctm : bool
         Should ``BDMRuntimeWarning`` be sent in the case there is missing
         CTM value. Some CTM values may be missing for larger alphabets as it is
         computationally infeasible to explore entire parts space.
-        Missing CTM values are imputed with mean CTM complexities
-        over all parts of a given shape.
+        Missing CTM values are imputed with the maximum available CTM value
+        plus ``1`` as unexplored parts are these of highest complexity.
         This can be also disabled globally with the global option
         of the same name, i.e. ``pybdm.options.set(warn_if_missing_ctm=False)``.
     raise_if_zero : bool
@@ -68,19 +69,19 @@ class BDM:
 
     BDM has also natural structure corresponding to the so-called
     *split-apply-combine* strategy in data analysis.
-    First, a large dataset it decomposed into smaller block for which
+    First, a large dataset it decomposed into smaller blocks for which
     precomputed CTM values can be efficiently looked up.
     Then CTM values for slices are aggregated in a theory-informed way
-    into a global approximation of complexity of the full dataset. Thus,
-    BDM computations naturally decomposes into four stages:
+    into a global approximation of complexity of the full dataset.
+    Thus, BDM computations naturally decomposes into four stages:
 
     #. **Partition (decomposition) stage.** First a dataset is decomposed
-       into block. This is done by the :py:meth:`decompose` method.
+       into blocks. This is done by the :py:meth:`decompose` method.
        The method itself is dependent on the `partition` attribute which points
-       to a :py:mod:`pybdm.partitions` object, which implements and configures
-       a particular  variant of the decomposition algorithm.
-       Detailed description of the available algorithms can be found in
-       :doc:`theory`.
+       to a :py:mod:`pybdm.partitions._Partiion` object,
+       which implements and configures a particular variant
+       of the decomposition algorithm. Detailed description of the available
+       algorithms can be found in :doc:`theory`.
     #. **Lookup stage.** At this stage CTM values for blocks are looked up.
        This is when the CTM reference dataset is used.
        It is implemented in the :py:meth`lookup` method.
@@ -127,6 +128,8 @@ class BDM:
             or a given `ctmname`.
         """
         self.ndim = ndim
+        self.nsymbols = nsymbols
+
         try:
             self.ctmname = ctmname if ctmname else self._ndim_to_ctm[(ndim, nsymbols)]
         except KeyError:
@@ -134,17 +137,19 @@ class BDM:
                 ndim, nsymbols
             )
             raise CTMDatasetNotFoundError(msg)
-        try:
-            nsymbols, _shape = self.ctmname.split('-')[-2:]
-        except ValueError:
-            msg = "incorrect 'ctmname'; it should be in format " + \
-                "'name-b<nsymbols>-d<shape>'"
-            raise BDMConfigurationError(msg)
-        self.nsymbols = int(nsymbols[1:])
+
         if shape is None:
-            shape = tuple(int(x) for x in _shape[1:].split('x'))
-        if any([ x != shape[0] for x in shape ]):
+            try:
+                _, shape = self.ctmname.split('-')[-2:]
+                shape = tuple(int(x) for x in shape[1:].split('x'))
+            except ValueError:
+                msg = "incorrect 'ctmname'; it should be in format " + \
+                "'name-b<nsymbols>-d<shape>'"
+                raise BDMConfigurationError(msg)
+
+        if any(x != shape[0] for x in shape):
             raise BDMConfigurationError("'shape' has to be equal in each dimension")
+
         ctm, ctm_missing = get_ctm_dataset(self.ctmname)
         self._ctm = ctm
         self._ctm_missing = ctm_missing
