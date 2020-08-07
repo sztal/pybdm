@@ -2,6 +2,7 @@
 
 import os
 import sys
+from pkg_resources import parse_requirements
 
 try:
     from setuptools import setup, find_packages
@@ -21,6 +22,11 @@ Documentation
 The full documentation is at http://pybdm-docs.rtfd.org."""
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
+with open('requirements-dev.txt', 'r') as req:
+    tests_require = [ str(r) for r in parse_requirements(req) ]
+with open('requirements-build.txt', 'r') as req:
+    install_requires = [ str(r) for r in parse_requirements(req) ]
+
 setup(
     name='pybdm',
     version='0.1.0',
@@ -34,21 +40,9 @@ setup(
     package_data={'pybdm': ['resources/*.pkl']},
     include_package_data=True,
     setup_requires=['pytest-runner'],
-    tests_require=[
-        'pylint>=2.1.1',
-        'pytest>=3.5.1',
-        'pytest-pylint>=0.12.2',
-        'pytest-doctestplus>=0.2.0',
-        'coverage>=4.5.1',
-        'codecov>=2.0.15',
-        'pytest-cov>=2.7.1',
-        'tox-conda>=0.2.0',
-        'joblib>=0.13.0'
-    ],
+    tests_require=tests_require,
     test_suite='tests',
-    install_requires=[
-        'numpy>=1.15.4'
-    ],
+    install_requires=install_requires,
     license='MIT',
     zip_safe=False,
     keywords=[
