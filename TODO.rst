@@ -11,4 +11,4 @@ TODO (v1.0.0)
 7. Adjust perturbation methods so they can handle sparse matrices.
 8. Entropy should count the actual number of bits and use different bases.
 9. Add more tests.
-
+10. Check and update documentation.
