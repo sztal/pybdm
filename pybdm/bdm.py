@@ -268,7 +268,7 @@ class BDM:
                 cmx = self._ctm[sh][key_n]
             except KeyError:
                 cmx = self._ctm_missing[sh]
-                if self.warn_if_missing_ctm and options.get('warn_if_missing_ctm'):
+                if self.warn_if_missing_ctm:
                     msg = "CTM dataset does not contain object '{}' of shape {}".format(
                         key, sh
                     )
