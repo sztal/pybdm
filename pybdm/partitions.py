@@ -7,9 +7,31 @@ into blocks of appropriate sizes.
 Decomposition can be done in multiple ways that handles boundaries differently.
 This is why partition algorithms have to be properly configured,
 so it is well-specified what approach exactly is to be used.
+
+Currently only two partition algorithms ('ignore' and 'recursive')
+are implemented. They are most natural and allow straightforward
+definition of normalized bdm (see :doc:`theory`).
 """
 # pylint: disable=unused-argument
-from .utils import decompose_dataset, iter_part_shapes
+from collections import Counter
+from importlib import import_module
+from .decompose import block_decompose
+
+
+__all__ = [
+    'PartitionIgnore',
+    'PartitionRecursive'
+]
+
+
+def get_partition(name_or_alias):
+    """Get partition class by name or alias."""
+    mod = import_module(__name__)
+    for name in __all__:
+        part = getattr(mod, name)
+        if name_or_alias in (name, part.alias):
+            return part
+    raise NameError("unknown partition '{}'".format(name_or_alias))
 
 
 class _Partition:
@@ -20,26 +42,27 @@ class _Partition:
     shape : tuple
         Blocks' shape.
     """
-    name = 'none'
+    alias = 'base'
 
     def __init__(self, shape):
         """Initialization method."""
         self.shape = shape
 
     def __repr__(self):
-        cn = self.__class__.__name__
-        return "<{}({})>".format(cn, ", ".join(self.params))
+        return "<{cn}({p})>".format(
+            cn=self.__class__.__name__,
+            p=", ".join(str(k)+"="+str(v) for k, v in self._get_params().items())
+        )
 
-    @property
-    def params(self):
-        return [ "shape={}".format(self.shape) ]
+    def _get_params(self):
+        return { 'shape': self.shape }
 
     def decompose(self, X):
         """Decompose a dataset into blocks.
 
         Parameters
         ----------
-        x : array_like
+        X : array_like
             Dataset of arbitrary dimensionality represented as a *Numpy* array.
 
         Yields
@@ -47,11 +70,17 @@ class _Partition:
         array_like
             Dataset blocks.
         """
-        cn = self.__class__.__name__
-        raise NotImplementedError("'{}' is not meant for a direct use".format(cn))
+        yield from block_decompose(X, shape=self.shape)
 
-    def _iter_shapes(self, X):
-        yield from iter_part_shapes(X, shape=self.shape, shift=0)
+    def block_census(self, X):
+        """Calculate block shape census of a dataset.
+
+        Parameters
+        ----------
+        X : array_like
+            Dataset of arbitrary dimensionality represented as a *Numpy* array.
+        """
+        return Counter(map(lambda x: x.shape, self.decompose(X)))
 
 
 class PartitionIgnore(_Partition):
@@ -61,73 +90,23 @@ class PartitionIgnore(_Partition):
     ----------
     shape : tuple
         Part shape.
+    alias : str
+        Equal to ``'ignore'``.
 
     Notes
     -----
     See :doc:`theory` for a detailed description.
     """
-    name = 'ignore'
+    alias = 'ignore'
 
     def decompose(self, X):
         """Decompose with the 'ignore' boundary.
 
         .. automethod:: _Partition.decompose
         """
-        for part in decompose_dataset(X, shape=self.shape, shift=0):
-            if part.shape == self.shape:
-                yield part
-
-    def _iter_shapes(self, X):
-        for shape in super()._iter_shapes(X):
-            if shape == self.shape:
-                yield shape
-
-class PartitionCorrelated(PartitionIgnore):
-    """Partition with the 'correlated' boundary condition.
-
-    Attributes
-    ----------
-    shape : tuple
-        Part shape.
-    shift : int (positive)
-        Shift parameter for the sliding window.
-
-    Notes
-    -----
-    See :doc:`theory` for a detailed description.
-
-    Raises
-    ------
-    AttributeError
-        If `shift` is not positive.
-    """
-    name = 'correlated'
-
-    def __init__(self, shape, shift=1):
-        """Initialization method."""
-        super().__init__(shape=shape)
-        if shift < 1:
-            raise AttributeError("'shift' has to be a positive integer")
-        self.shift = shift
-
-    @property
-    def params(self):
-        return super().params + [ "shift={}".format(self.shift) ]
-
-    def decompose(self, X):
-        """Decompose with the 'correlated' boundary.
-
-        .. automethod:: _Partition.decompose
-        """
-        for part in decompose_dataset(X, shape=self.shape, shift=self.shift):
-            if part.shape == self.shape:
-                yield part
-
-    def _iter_shapes(self, X):
-        shapes = iter_part_shapes(X, shape=self.shape, shift=self.shift)
-        for shape in shapes:
-            if shape == self.shape:
-                yield shape
+        for block in super().decompose(X):
+            if block.shape == self.shape:
+                yield block
 
 
 class PartitionRecursive(_Partition):
@@ -141,24 +120,25 @@ class PartitionRecursive(_Partition):
         Minimum parts' length. Non-negative.
         In case of multidimensional objects it specifies minimum
         length of any single dimension.
+    alias : str
+        Equal to ``'recursive'``.
 
     Notes
     -----
     See :doc:`theory` for a detailed description.
     """
-    name = 'recursive'
+    alias = 'recursive'
 
     def __init__(self, shape, min_length=2):
         """Initialization method."""
         super().__init__(shape=shape)
         self.min_length = min_length
 
-    @property
-    def params(self):
-        return super().params + [ "min_length={}".format(self.min_length) ]
+    def _get_params(self):
+        return { **super()._get_params(), 'min_length': self.min_length }
 
     def _decompose(self, X, shape):
-        for part in decompose_dataset(X, shape=shape, shift=0):
+        for part in block_decompose(X, shape=shape):
             if part.shape == shape:
                 yield part
             else:

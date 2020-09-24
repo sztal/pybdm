@@ -12,19 +12,15 @@ is implemented in an object-oriented fashion, so an instance can be first
 configured properly and then it exposes a public method :py:meth:`BDM.bdm`
 for computing approximated complexity via BDM.
 """
-# pylint: disable=protected-access
-import warnings
-from math import factorial, log2
-from collections import Counter, defaultdict
+from math import log2, prod
+from collections import defaultdict, Counter
 from functools import reduce
-from itertools import cycle, repeat, chain
 import numpy as np
-from . import options
-from .utils import get_ctm_dataset
-from .partitions import PartitionIgnore, PartitionCorrelated
-from .encoding import string_from_array, normalize_key
-from .exceptions import BDMRuntimeWarning
-from .exceptions import CTMDatasetNotFoundError, BDMConfigurationError
+from .options import Options
+from .partitions import get_partition
+from .ctm import CTMStore, INT_DTYPE
+from .encoding import encode_sequences, normalize_sequences
+from .utils import chunked_buckets
 
 
 class BDM:
@@ -36,27 +32,20 @@ class BDM:
         Number of dimensions of target dataset objects. Positive integer.
     nsymbols : int
         Number of symbols in the alphabet.
-    partition : Partition class
+    nstates : int
+        nstates : int, positive
+        Number of states of explored Turing machines.
+        The more states the better approximation.
+    shape : tuple of int
+        Block shape. Has to be equal in all dimensions.
+    partition : pybdm.partitions._Partition
         Partition algorithm class object.
         The class is called with the `shape` attribute determined
         automatically if not passed and other attributes passed via ``**kwds``.
-    ctmname : str
-        Name of the CTM dataset. If ``None`` then a CTM dataset is selected
-        automatically based on `ndim` and `nsymbols`.
-        In most cases one should go with the automatic default.
-    warn_if_missing_ctm : bool, optional
-        Should ``BDMRuntimeWarning`` be sent in the case there is missing
-        CTM value. Some CTM values may be missing for larger alphabets as it is
-        computationally infeasible to explore entire parts space.
-        Missing CTM values are imputed with the maximum available CTM value
-        plus ``1`` as unexplored parts are these of highest complexity.
-        If undefined then a global option of the same name,
-        i.e. ``pybdm.options.set(warn_if_missing_ctm=False)``.
-    raise_if_zero : bool, optional
-        Should error be raised if BDM value is zero.
-        Zero value indicates that a dataset could have incorrect dimensions.
-        If undefined then a global option of the same name,
-        i.e. ``pybdm.options.set(raise_if_zero=False)``.
+    options : pybdm.options.Options
+        Options table. See :py:mod:`pybdm.options` for details.
+        Instance-level options defined through this attribute
+        override global options.
 
     Notes
     -----
@@ -92,106 +81,81 @@ class BDM:
 
     See also
     --------
-    pybdm.ctmdata : available CTM datasets
+    pybdm.ctm : available CTM datasets
     pybdm.partitions : available partition and boundary condition classes
+    pybdm.options : general `pybdm` options.
     """
-    _ndim_to_ctm = {
-        # 1D datasets
-        (1, 2): 'CTM-B2-D12',
-        (1, 4): 'CTM-B4-D12',
-        (1, 5): 'CTM-B5-D12',
-        (1, 6): 'CTM-B6-D12',
-        (1, 9): 'CTM-B9-D12',
-        # 2D datasets
-        (2, 2): 'CTM-B2-D4x4',
-    }
-
-    def __init__(self, ndim, nsymbols=2, shape=None, partition=PartitionIgnore,
-                 ctmname=None, warn_if_missing_ctm=None, raise_if_zero=None, **kwds):
+    def __init__(self, ndim, nsymbols=2, nstates=None, shape=None,
+                 partition='ignore', options=None, **kwds):
         """Initialization method.
 
         Parameters
         ----------
-        shape : tuple
-            Part shape to be passed to the partition algorithm.
         **kwds :
             Other keyword arguments passed to a partition algorithm class.
 
         Raises
         ------
         AttributeError
-            If 'shift' is not ``0`` or ``1``.
-        AttributeError
-            If parts' `shape` is not equal in each dimension.
-        CTMDatasetNotFoundError
-            If there is no CTM dataset for a combination of `ndim` and `nsymbols`
-            or a given `ctmname`.
+            If block `shape` is not equal in each dimension.
+        LookupError
+            If there is no CTM dataset for a combination of `ndim`
+            and `nsymbols`.
         """
-        self.ndim = ndim
-        self.nsymbols = nsymbols
-
-        try:
-            self.ctmname = ctmname if ctmname else self._ndim_to_ctm[(ndim, nsymbols)]
-        except KeyError:
-            msg = "no CTM dataset for 'ndim={}' and 'nsymbols={}'".format(
-                ndim, nsymbols
-            )
-            raise CTMDatasetNotFoundError(msg)
-
+        ctm = CTMStore.from_params(
+            ndim=ndim,
+            nsymbols=nsymbols,
+            nstates=nstates
+        )
         if shape is None:
-            try:
-                _, shape = self.ctmname.split('-')[-2:]
-                shape = tuple(int(x) for x in shape[1:].split('x'))
-            except ValueError:
-                msg = "incorrect 'ctmname'; it should be in format " + \
-                "'name-b<nsymbols>-d<shape>'"
-                raise BDMConfigurationError(msg)
-
+            shape = next(iter(sorted(ctm.data, key=sum, reverse=True)))
         if any(x != shape[0] for x in shape):
-            raise BDMConfigurationError("'shape' has to be equal in each dimension")
+            raise AttributeError("'shape' has to be equal in each dimension")
 
-        ctm, ctm_missing = get_ctm_dataset(self.ctmname)
-        self._ctm = ctm
-        self._ctm_missing = ctm_missing
-        self._warn_if_missing_ctm = warn_if_missing_ctm
-        self._raise_if_zero = raise_if_zero
-        self.partition = partition(shape=shape, **kwds)
+        if isinstance(partition, str):
+            partition = get_partition(partition)
+        if callable(partition):
+            partition = partition(shape=shape, **kwds)
 
-    # Option setters and getters ----------------------------------------------
-
-    @property
-    def warn_if_missing_ctm(self):
-        if self._warn_if_missing_ctm is not None:
-            return self._warn_if_missing_ctm
-        return options.get('warn_if_missing_ctm')
-    @warn_if_missing_ctm.setter
-    def warn_if_missing_ctm(self, value):
-        self._warn_if_missing_ctm = value
-
-    @property
-    def raise_if_zero(self):
-        if self._raise_if_zero is not None:
-            return self._raise_if_zero
-        return options.get('raise_if_zero')
-    @raise_if_zero.setter
-    def raise_if_zero(self, value):
-        self._raise_if_zero = value
-
-    # -------------------------------------------------------------------------
+        self.ctm = ctm
+        self.partition = partition
+        self.options = Options(**(options or {}))
 
     def __repr__(self):
-        partition = str(self.partition)[1:-1]
-        cn = self.__class__.__name__
-        return "<{}(ndim={}, nsymbols={}) with {}>".format(
-            cn, self.ndim, self.nsymbols, partition
+        return "<{cn}(ndim={d}, nsymbols={b}, nstates={s}) with {p}>".format(
+            cn=self.__class__.__name__,
+            d=self.ndim,
+            b=self.nsymbols,
+            s=self.nstates,
+            p=str(self.partition)[1:-1]
         )
+
+    # Properties --------------------------------------------------------------
+
+    @property
+    def ndim(self):
+        return self.ctm.ndim
+
+    @property
+    def nsymbols(self):
+        return self.ctm.nsymbols
+
+    @property
+    def nstates(self):
+        return self.ctm.nstates
+
+    @property
+    def shape(self):
+        return self.partition.shape
+
+    # -------------------------------------------------------------------------
 
     def decompose(self, X):
         """Decompose a dataset into blocks.
 
         Parameters
         ----------
-        x : array_like
+        X : array_like
             Dataset of arbitrary dimensionality represented as a *Numpy* array.
 
         Yields
@@ -208,7 +172,7 @@ class BDM:
         **Acknowledgments**
 
         Special thanks go to Paweł Weroński for the help with the design of
-        the non-recursive *partition* algorithm.
+        the general *partition* algorithm.
 
         Examples
         --------
@@ -220,132 +184,95 @@ class BDM:
         """
         yield from self.partition.decompose(X)
 
-    def lookup(self, blocks, lookup_ctm=True):
-        """Lookup CTM values for blocks in a reference dataset.
+    def count_blocks(self, blocks, buffer_size=None):
+        """Count unique blocks and map them to standard and normalized
+        integer codes.
 
         Parameters
         ----------
-        blocks : sequence
-            Ordered sequence of dataset parts.
-        lookup_ctm : bool
-            Should CTM values be looked up.
-            This is used only for calculating entropy
-            in which case CTM values are not needed.
-
-        Yields
-        ------
-        tuple
-            2-tuple with string representation of a dataset part and its CTM value.
-
-        Raises
-        ------
-        KeyError
-            If key of an object can not be found in the reference CTM lookup table.
-
-        Warns
-        -----
-        BDMRuntimeWarning
-            If ``warn_if_missing_ctm=True`` and there is no precomputed CTM
-            value for a part during the lookup stage.
-            This can be always disabled with the global option of the same name.
-
-        Examples
-        --------
-        >>> bdm = BDM(ndim=1)
-        >>> data = np.ones((12, ), dtype=int)
-        >>> parts = bdm.decompose(data)
-        >>> [ x for x in bdm.lookup(parts) ] # doctest: +FLOAT_CMP
-        [('111111111111', 25.610413747641715)]
-        """
-        for block in blocks:
-            sh = block.shape
-            key = string_from_array(block)
-            if not lookup_ctm:
-                yield key, None
-                continue
-            key_n = normalize_key(key)
-            try:
-                cmx = self._ctm[sh][key_n]
-            except KeyError:
-                cmx = self._ctm_missing[sh]
-                if self.warn_if_missing_ctm:
-                    msg = "CTM dataset does not contain object '{}' of shape {}".format(
-                        key, sh
-                    )
-                    warnings.warn(msg, BDMRuntimeWarning, stacklevel=2)
-            yield key, cmx
-
-    def count(self, ctms):
-        """Count unique blocks.
-
-        Parameters
-        ----------
-        ctms : sequence of 2-tuples
-            Ordered 1D sequence of string keys and CTM values.
+        blocks : iterable of array_like
+            Data blocks.
+        buffer_size : int
+            Size of block chunks to use to speed up computations.
+            Non-positive values mean all blocks will be processed
+            at once (not recommended for large datasets).
+            Use global/instance option value (`'count_buffer_size'`)
+            when ``None``.
 
         Returns
         -------
-        Counter
-            Set of unique blocks with their CTM values and numbers of occurences.
-
-        Examples
-        --------
-        >>> bdm = BDM(ndim=1)
-        >>> data = np.ones((24, ), dtype=int)
-        >>> parts = bdm.decompose(data)
-        >>> ctms = bdm.lookup(parts)
-        >>> bdm.count(ctms) # doctest: +FLOAT_CMP
-        Counter({('111111111111', 25.610413747641715): 2})
+        dict
+            Maps block shapes to :py:class:`collections.Counter` objects
+            counting unique block codes.
         """
-        counter = Counter(ctms)
-        return counter
+        if buffer_size is None:
+            buffer_size = self.options.bdm_buffer_size
+        blocks = chunked_buckets(blocks, n=buffer_size, key=lambda x: x.shape)
+        dct = defaultdict(Counter)
 
-    def decompose_and_count(self, X, lookup_ctm=True):
-        """Decompose and count blocks.
+        for shape, chunk in blocks:
+            arr = np.empty((len(chunk), prod(shape)), dtype=INT_DTYPE)
+            for i, a in enumerate(chunk):
+                arr[i] = a.flatten()
+            codes = encode_sequences(arr, base=self.nsymbols)
+            codes_n = encode_sequences(
+                normalize_sequences(arr, base=self.nsymbols),
+                base=self.nsymbols
+            )
+            dct[shape] += Counter(zip(codes_n, codes))
+        return dict(dct)
 
-        Parameters
-        ----------
-        X : array_like
-            Dataset representation as a :py:class:`numpy.ndarray`.
-            Number of axes must agree with the `ndim` attribute.
-        lookup_ctm : bool
-            Should CTM values be looked up.
+    def decompose_and_count(self, X, **kwds):
+        """Decompose a dataset and count blocks.
+        ``**kwds`` are passed to :py:meth:`count_blocks`.
 
-        Returns
-        -------
-        collections.Counter
-            Lookup table mapping 2-tuples with string keys and CTM values
-            to numbers of occurences.
-
-        Notes
-        -----
-        This is equivalent to calling :py:meth:`decompose`,
-        :py:meth:`lookup` and :py:meth:`count`.
-
-        Examples
+        See also
         --------
-        >>> import numpy as np
-        >>> bdm = BDM(ndim=1)
-        >>> bdm.decompose_and_count(np.ones((12, ), dtype=int)) # doctest: +FLOAT_CMP
-        Counter({('111111111111', 25.610413747641715): 1})
+        decompose : object decomposition
+        count_blocks : block counting
         """
         blocks = self.decompose(X)
-        blocks = self.lookup(blocks, lookup_ctm=lookup_ctm)
-        counter = self.count(blocks)
-        return counter
+        return self.count_blocks(blocks, **kwds)
 
-    def compute_bdm(self, *counters):
-        """Approximate Kolmogorov complexity based on the BDM formula.
+    def lookup(self, *counters):
+        """Lookup CTM values.
 
         Parameters
         ----------
-        *counters :
-            Counter objects grouping object keys and occurences.
+        *counters : Counter
+            Counter objects mapping codes to frequences.
+
+        Returns
+        -------
+        1D array_like
+            Frequencies of unique blocks.
+        1D array_like
+            CTM complexity values for unique blocks.
+        """
+        counter = reduce(self._merge_counters, counters)
+        freq = np.hstack([
+            np.array(list(counter[shape].values()), dtype=INT_DTYPE)
+            for shape in counter
+        ])
+        cmx = np.hstack([
+            self.ctm.get(shape, map(lambda x: x[0], counter[shape]))
+            for shape in counter
+        ])
+        return freq, cmx
+
+    def calc_bdm(self, *counters):
+        """Estimate Kolmogorov complexity based on the BDM formula.
+
+        Parameters
+        ----------
+        counters : dict-like
+            Counters dictionaries as returned by
+            :py:meth:`count_blocks`.
 
         Returns
         -------
         float
-            Approximate algorithmic complexity.
+            Estimated algorithmic complexity.
 
         Notes
         -----
@@ -360,14 +287,10 @@ class BDM:
         >>> bdm.compute_bdm(c1, c2) # doctest: +FLOAT_CMP
         1.000000019520784
         """
-        counter = reduce(lambda x, y: x+y, counters)
-        bdm = 0
-        for key, n in counter.items():
-            _, ctm = key
-            bdm += ctm + log2(n)
-        return bdm
+        freq, cmx = self.lookup(*counters)
+        return np.log2(freq).sum() + cmx.sum()
 
-    def bdm(self, X, normalized=False, check_data=True):
+    def bdm(self, X, normalized=False, check_data=None, **kwds):
         """Approximate complexity of a dataset with BDM.
 
         Parameters
@@ -380,11 +303,14 @@ class BDM:
         check_data : bool
             Should data format be checked.
             May be disabled to gain some speed when calling multiple times.
+            Use `options` attribute if ``None``.
+        **kwds :
+            Passed to :py:meth:`count_blocks`.
 
         Returns
         -------
         float
-            Approximate algorithmic complexity.
+            Estimated algorithmic complexity.
 
         Raises
         ------
@@ -410,21 +336,22 @@ class BDM:
         >>> bdm.bdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         25.176631293734488
         """
+        if check_data is None:
+            check_data = self.options.bdm_check_data
         if check_data:
-            self._check_data(X)
-        if normalized and isinstance(self.partition, PartitionCorrelated):
-            raise NotImplementedError(
-                "normalized BDM not implemented for '{}' partition".format(
-                    PartitionCorrelated.name
-                ))
-        counter = self.decompose_and_count(X)
-        cmx = self.compute_bdm(counter)
-        if self.raise_if_zero and options.get('raise_if_zero') and cmx == 0:
+            self.check_data(X)
+
+        counter = self.decompose_and_count(X, **kwds)
+        cmx = self.calc_bdm(counter)
+
+        if self.options.bdm_if_zero == 'raise' and cmx == 0:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
+
         if normalized:
-            min_cmx = self._get_min_bdm(X)
-            max_cmx = self._get_max_bdm(X)
+            min_cmx = self._get_min_bdm(counter)
+            max_cmx = self._get_max_bdm(counter)
             cmx = (cmx - min_cmx) / (max_cmx - min_cmx)
+
         return cmx
 
     def nbdm(self, X, **kwds):
@@ -438,18 +365,24 @@ class BDM:
         """
         return self.bdm(X, normalized=True, **kwds)
 
-    def compute_ent(self, *counters):
-        """Compute block entropy from a counter obejct.
+    def calc_ent(self, *counters, rv=False):
+        """Calculate block entropy from a counter obejct.
 
         Parameters
         ----------
-        *counters :
-            Counter objects grouping object keys and occurences.
+        counter : dict-like
+            Counters dictionary as returned by
+            :py:meth:`count_blocks`.
+        rv : bool
+            Calculate entropy of a single random variable
+            yielding a random block.
 
         Returns
         -------
         float
             Block entropy in base 2.
+            It is equal to the entropy of the frequency distribution
+            of blocks multipled by the number of blocks.
 
         Examples
         --------
@@ -460,15 +393,20 @@ class BDM:
         >>> bdm.compute_ent(c1, c2) # doctest: +FLOAT_CMP
         1.0
         """
-        counter = reduce(lambda x, y: x+y, counters)
-        ncounts = sum(counter.values())
-        ent = 0
-        for n in counter.values():
-            p = n/ncounts
-            ent -= p*np.log2(p)
+        counter = reduce(self._merge_counters, counters)
+        freq = np.hstack([
+            np.array(list(counter[shape].values()), dtype=INT_DTYPE)
+            for shape in counter
+        ])
+        N = freq.sum()
+        p = freq / N
+        p = p[p > 0]
+        ent = -(p*np.log2(p)).sum()
+        if not rv:
+            ent *= N
         return ent
 
-    def ent(self, X, normalized=False, check_data=True):
+    def ent(self, X, normalized=False, check_data=None, rv=False, **kwds):
         """Block entropy of a dataset.
 
         Parameters
@@ -481,6 +419,12 @@ class BDM:
         check_data : bool
             Should data format be checked.
             May be disabled to gain some speed when calling multiple times.
+            Use `options` attribute if ``None``.
+        rv : bool
+            Calculate entropy of a single random variable
+            yielding a random block.
+        **kwds :
+            Passed to :py:meth:`count_blocks`.
 
         Returns
         -------
@@ -505,19 +449,19 @@ class BDM:
         >>> bdm.ent(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         0.0
         """
+        if check_data is None:
+            check_data = self.options.bdm_check_data
         if check_data:
-            self._check_data(X)
-        if normalized and isinstance(self.partition, PartitionCorrelated):
-            raise NotImplementedError(
-                "normalized entropy not implemented for '{}' partition".format(
-                    PartitionCorrelated.name
-                ))
-        counter = self.decompose_and_count(X, lookup_ctm=False)
-        ent = self.compute_ent(counter)
+            self.check_data(X)
+
+        counter = self.decompose_and_count(X, **kwds)
+        ent = self.calc_ent(counter, rv=rv)
+
         if normalized:
-            min_ent = self._get_min_ent(X)
-            max_ent = self._get_max_ent(X)
+            min_ent = self._get_min_ent(counter, rv=rv)
+            max_ent = self._get_max_ent(counter, rv=rv)
             ent = (ent - min_ent) / (max_ent - min_ent)
+
         return ent
 
     def nent(self, X, **kwds):
@@ -531,7 +475,7 @@ class BDM:
         """
         return self.ent(X, normalized=True, **kwds)
 
-    def _check_data(self, X):
+    def check_data(self, X):
         """Check if data is correctly formatted.
 
         Symbols have to mapped to integers from ``0`` to `self.nsymbols-1`.
@@ -543,7 +487,7 @@ class BDM:
             raise ValueError("'X' has more than {} unique symbols".format(
                 self.nsymbols
             ))
-        valid_symbols = np.array(list(range(self.nsymbols)))
+        valid_symbols = np.arange(self.nsymbols)
         bad_symbols = symbols[~np.isin(symbols, valid_symbols)]
         if bad_symbols.size > 0:
             raise ValueError("'X' contains symbols outside of [0, {}]: {}".format(
@@ -551,61 +495,60 @@ class BDM:
                 ", ".join(str(s) for s in bad_symbols)
             ))
 
-    def _cycle_parts(self, shape):
-        """Cycle over all possible dataset parts sorted by complexity."""
+    @staticmethod
+    def _merge_counters(x, y):
+        for shape, cnt in y.items():
+            x[shape] += cnt
+        return x
 
-        def rep(part):
-            key, cmx = part
-            n = len(set(key))
-            k = factorial(self.nsymbols) / factorial(self.nsymbols - n)
-            return repeat((key, cmx), int(k))
-
-        parts = chain.from_iterable(map(rep, self._ctm[shape].items()))
-        return cycle(enumerate(parts))
-
-    def _get_counter_dct(self, X):
-        cycle_dct = {}
-        counter_dct = defaultdict(Counter)
-        for shape, n in self._iter_shapes(X):
-            if shape not in cycle_dct:
-                cycle_dct[shape] = self._cycle_parts(shape)
-            for _ in range(n):
-                idx, kv = next(cycle_dct[shape])
-                _, cmx = kv
-                counter_dct[shape].update(((idx, cmx),))
-        return counter_dct
-
-    def _iter_shapes(self, X):
-        yield from Counter(self.partition._iter_shapes(X)).items()
-
-    def _get_max_bdm(self, X):
-        counter_dct = self._get_counter_dct(X)
+    def _get_max_bdm(self, counter):
         bdm = 0
-        for dct in counter_dct.values():
-            for c, n in dct.items():
-                _, cmx = c
-                bdm += cmx + log2(n)
+        for shape in counter:
+            n_blocks = sum(counter[shape].values())
+            n_uniq = self.ctm.data[shape].size
+            n_cmx = min(n_blocks, n_uniq)
+            n_log = max(0, n_blocks - n_uniq)
+            p, q = divmod(n_log, n_uniq)
+            bdm += self.ctm.data[shape].values[:n_cmx].sum()
+            bdm += n_log * log2(p + 1) + q * log2(p + 2)
         return bdm
 
-    def _get_min_bdm(self, X):
+    def _get_min_bdm(self, counter):
         bdm = 0
-        for shape, n in self._iter_shapes(X):
-            cmx = next(reversed(self._ctm[shape].values()))
-            bdm += cmx + log2(n)
+        for shape in counter:
+            cmx = self.ctm.data[shape][0]
+            freq = log2(sum(counter[shape].values()))
+            bdm += cmx + freq
         return bdm
 
-    def _get_max_ent(self, X):
-        counter_dct = self._get_counter_dct(X)
-        parts_count = Counter()
-        for dct in counter_dct.values():
-            parts_count.update(idx for idx, _ in dct)
-        return self.compute_ent(parts_count)
+    def _get_max_ent(self, counter, rv=False):
 
-    def _get_min_ent(self, X):
-        shapes = Counter(shape for shape, _ in self._iter_shapes(X))
-        ncounts = sum(shapes.values())
+        def _make_freq(shape):
+            n_blocks = sum(counter[shape].values())
+            n_uniq = self.ctm.data[shape].size
+            p, q = divmod(n_blocks, n_uniq)
+            freq = np.full((n_uniq,), p, dtype=INT_DTYPE)
+            freq[:q] += 1
+            return freq
+
         ent = 0
-        for n in shapes.values():
-            p = n/ncounts
-            ent -= p*log2(p)
+        freq = np.hstack([ _make_freq(shape) for shape in counter ])
+        N = freq.sum()
+        p = freq / N
+        p = p[p > 0]
+        ent = -(p * np.log2(p)).sum()
+        if not rv:
+            ent *= N
+        return ent
+
+    def _get_min_ent(self, counter, rv=False):
+        freq = np.array([
+            sum(counter[shape].values()) for shape in counter
+        ], dtype=INT_DTYPE)
+        N = freq.sum()
+        p = freq / N
+        p = p[p > 0]
+        ent = -(p * np.log2(p)).sum()
+        if not rv:
+            ent *= N
         return ent

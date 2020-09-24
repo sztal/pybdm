@@ -1,3 +1,6 @@
+# Various local utilities
+_scripts/**
+
 # IDEs
 .vscode
 

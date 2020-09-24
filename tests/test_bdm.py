@@ -1,17 +1,24 @@
 """Tests for `bdm` module."""
-# pylint: disable=W0621
 import os
-import warnings
 import pytest
 from pytest import approx
 import numpy as np
 from joblib import Parallel, delayed
 from pybdm.bdm import BDM
-from pybdm.partitions import PartitionRecursive
-from pybdm.encoding import array_from_string
-from pybdm.utils import decompose_dataset
-from pybdm.exceptions import BDMRuntimeWarning
-from pybdm.exceptions import CTMDatasetNotFoundError, BDMConfigurationError
+from pybdm.decompose import block_decompose
+
+
+# Helpers ---------------------------------------------------------------------
+
+def array_from_string(s, shape=None, dtype=int):
+    # pylint: disable=redefined-outer-name
+    arr = np.array(list(s), dtype=dtype)
+    if shape:
+        arr = arr.reshape(shape)
+    return arr
+
+# -----------------------------------------------------------------------------
+
 
 s0 = '0'*24
 s1 = '0'*12+'1'*12
@@ -54,30 +61,34 @@ with open(os.path.join(_dirpath, 'ent-b2-d4x4-test-input.tsv'), 'r') as stream:
 class TestBDM:
 
     @pytest.mark.parametrize('ndim', (1, 2, 3))
-    @pytest.mark.parametrize('min_length', (2, 6, 12))
-    @pytest.mark.parametrize('nsymbols', (2, 9, 10))
-    @pytest.mark.parametrize('ctmname', (None, 'CTM-B2-D12', 'XXX'))
-    @pytest.mark.parametrize('warn_if_missing_ctm', (True, False))
-    def test_bdm_init(self, ndim, min_length, nsymbols, ctmname,
-                      warn_if_missing_ctm):
-        # pylint: disable=unused-variable,broad-except
+    @pytest.mark.parametrize('nsymbols', (2, 10))
+    @pytest.mark.parametrize('nstates', (4, 5, 6))
+    @pytest.mark.parametrize('shape', [(4, 4), (4, 3)])
+    @pytest.mark.parametrize('min_length', (2, 12))
+    def test_bdm_init(self, ndim, nsymbols, nstates, shape, min_length):
+        # pylint: disable=unused-variable
         try:
             bdm1 = BDM(
                 ndim=ndim,
                 nsymbols=nsymbols,
-                ctmname=ctmname,
-                warn_if_missing_ctm=warn_if_missing_ctm
+                partition='ignore'
             )
             bdm1 = BDM(
                 ndim=ndim,
                 nsymbols=nsymbols,
-                partition=PartitionRecursive,
+                partition='recursive',
                 min_length=min_length,
-                ctmname=ctmname,
-                warn_if_missing_ctm=warn_if_missing_ctm
             )
-        except Exception as exc:
-            assert isinstance(exc, (CTMDatasetNotFoundError, BDMConfigurationError))
+        except LookupError:
+            assert (
+                (ndim > 2) or
+                (nstates not in (4, 5)) or
+                (nsymbols not in (2, 4, 5, 6, 9)) or
+                (nsymbols == 2 and nstates != 5) or
+                (nsymbols > 2 and nstates != 4)
+            )
+        except AttributeError:
+            assert len(set(shape)) != 1
 
     @pytest.mark.parametrize('X,expected', bdm1_test_input)
     def test_bdm_d1(self, bdm_d1, X, expected):
@@ -96,13 +107,7 @@ class TestBDM:
     ])
     def test_bdm_d1_b9(self, bdm_d1_b9, X, expected):
         X = np.array(X)
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            output = bdm_d1_b9.bdm(X)
-            if w:
-                assert issubclass(w[-1].category, BDMRuntimeWarning)
-                assert str(w[-1].message) \
-                    .startswith("CTM dataset does not contain object")
+        output = bdm_d1_b9.bdm(X)
         assert output == approx(expected)
 
     @pytest.mark.parametrize('X,expected', bdm2_test_input)
@@ -111,13 +116,23 @@ class TestBDM:
         assert output == approx(expected)
 
     @pytest.mark.parametrize('X,expected', ent1_test_input)
-    def test_ent_d1(self, bdm_d1, X, expected):
-        output = bdm_d1.ent(X)
+    @pytest.mark.parametrize('rv', (True, False))
+    def test_ent_d1(self, bdm_d1, X, expected, rv):
+        output = bdm_d1.ent(X, rv=rv)
+        if not rv:
+            counter = bdm_d1.decompose_and_count(X)
+            N = sum([ sum(c.values()) for c in counter.values() ])
+            expected *= N
         assert output == approx(expected)
 
     @pytest.mark.parametrize('X,expected', ent2_test_input)
-    def test_ent_d2(self, bdm_d2, X, expected):
-        output = bdm_d2.ent(X)
+    @pytest.mark.parametrize('rv', (True, False))
+    def test_ent_d2(self, bdm_d2, X, expected, rv):
+        output = bdm_d2.ent(X, rv=rv)
+        if not rv:
+            counter = bdm_d2.decompose_and_count(X)
+            N = sum([ sum(c.values()) for c in counter.values() ])
+            expected *= N
         assert output == approx(expected)
 
     @pytest.mark.parametrize('X,expected', [
@@ -132,7 +147,7 @@ class TestBDM:
             0,0,1,1,0,1,1,1,0,1,1,0,1,0,0,1,0,0,0,0,0,0,0,1,
             0,0,0,1,0,1,0,1,0,1,0,1,1,1,1,1,1,0,0,0,1,1,1,1,0,
             0,1,1,0,1,1,0,0,0,0,1,0,1,1,1,0,1,1,0,0,1,1,0,1,1
-        ], dtype=int), 0.8924514180488615)
+        ], dtype=int), 0.9012807791010917)
     ])
     def test_nbdm_d1(self, bdm_d1, X, expected):
         output = bdm_d1.nbdm(X)
@@ -164,10 +179,10 @@ class TestBDM:
 
     @pytest.mark.slow
     def test_bdm_parallel(self, bdm_d2):
-        X = np.ones((500, 500), dtype=int)
+        X = np.ones((5000, 5000), dtype=int)
         expected = bdm_d2.bdm(X)
         counters = Parallel(n_jobs=2) \
             (delayed(bdm_d2.decompose_and_count)(d)
-             for d in decompose_dataset(X, (100, 100)))
-        output = bdm_d2.compute_bdm(*counters)
+             for d in block_decompose(X, (1000, 1000)))
+        output = bdm_d2.calc_bdm(*counters)
         assert output == approx(expected)
