@@ -14,8 +14,7 @@ finite alphabet of symbols can be uniquely mapped to an integer code.
 
 Before encoding arrays are flattened in row-major (C-style) order.
 """
-import math
-from collections import deque
+from math import prod
 import numpy as np
 
 
@@ -107,25 +106,25 @@ def normalize_sequences(arr, base=2):
 
     return arr
 
-def decode_sequence(code, shape=None, base=2, dtype=None):
+def decode_sequences(codes, shape, base, dtype=int):
     """Decode sequence from a sequence code.
 
     Parameters
     ----------
-    code : int
-        Non-negative integer.
-    shape : tuple of int, optional
-        Shape tuple the sequence should be conformable with.
+    codes : 1D non-negative integer array
+        Non-negative integers.
+    shape : tuple of int
+        Block shape for sequences.
     base : int
         Encoding base.
         Should be equal to the number of unique symbols in the alphabet.
-    dtype : numpy.dtype, optional
-        Data type of the resulting array.
+    dtype : numpy.dtype
+        Data type of the resulting array of sequences.
 
     Returns
     -------
     array_like
-        1D *Numpy* array.
+        2D integer array.
 
     Raises
     ------
@@ -139,50 +138,17 @@ def decode_sequence(code, shape=None, base=2, dtype=None):
     >>> decode_sequence(447, shape=(8,), base=4)
     array([0, 0, 0, 1, 2, 3, 3, 3])
     """
-    if dtype is not None and not issubclass(dtype, np.integer):
-        raise TypeError("'dtype' has to be an integer class")
+    if isinstance(codes, int):
+        codes = np.array([codes], dtype=dtype)
+    if codes.ndim != 1 or not issubclass(codes.dtype.type, np.integer):
+        raise AttributeError("'codes' has to be 1D integer array")
 
-    bits = deque()
-    while code > 0:
-        code, rest = divmod(code, base)
-        bits.appendleft(rest)
-    if shape is not None:
-        size = math.prod(shape)
-        pad = size - len(bits)
-        if pad > 0:
-            for _ in range(pad):
-                bits.appendleft(0)
-        elif pad < 0:
-            raise ValueError("sequence is not conformable with 'shape'")
-    return np.array(bits, dtype=dtype)
+    width = prod(shape)
+    arr = np.zeros((codes.shape[0], width), dtype=dtype)
 
-def decode_array(code, shape, base=2, **kwds):
-    """Decode array of integer-symbols from a sequence code.
+    for i in range(width):
+        div = base**(width - i - 1)
+        mult, codes = divmod(codes, div)
+        arr[:, i] = mult
 
-    Parameters
-    ----------
-    code : int
-        Non-negative integer.
-    shape : tuple of ints
-        Expected array shape.
-    base : int
-        Encoding base.
-    **kwds :
-        Passed to :func:`decode_sequence`.
-
-    Returns
-    -------
-    array_like
-        *Numpy* array.
-
-    Raises
-    ------
-    TypeError
-        If `dtype` is not an integer type.
-    ValueError
-        If size of the decoded sequence is greater by the size implied
-        by `shape`.
-    """
-    seq = decode_sequence(code, shape=shape, base=base, **kwds)
-    # pylint: disable=invalid-unary-operand-type
-    return seq.reshape(shape, order='C')
+    return arr
