@@ -36,11 +36,13 @@ import pickle
 from math import ceil, log2, prod
 from collections import OrderedDict, ChainMap
 from types import MappingProxyType
-from functools import lru_cache
+from functools import lru_cache, cached_property
 from pkg_resources import resource_stream
 import numpy as np
 import pandas as pd
-from ..utils import count_ctm_classes
+from scipy.special import factorial
+from ..encoding import decode_sequences
+from ..utils import count_ctm_classes, n_distinct
 
 
 _HERE = __name__
@@ -69,6 +71,7 @@ def _name_to_filepath(name):
 
 @lru_cache(maxsize=2**ceil(log2(len(CTM_DATASETS))))
 def _load_ctm_store(ndim, nsymbols, nstates=None):
+    # pylint: disable=too-many-locals
     def err(ndim, nsymbols, nstates):
         msg = "CTM dataset with {n} states, {d} dimensions and {s} symbols not found" \
             .format(n=nstates, d=ndim, s=nsymbols)
@@ -95,21 +98,41 @@ def _load_ctm_store(ndim, nsymbols, nstates=None):
     with resource_stream(_HERE, filepath) as stream:
         data = dict(pickle.loads(gzip.decompress(stream.read())))
 
+    missing = {}
+
     for shape in data:
         codes, cmx = data[shape]
         codes = codes.astype(INT_DTYPE, copy=False)
         cmx = cmx.astype(FLOAT_DTYPE, copy=False)
         order = np.argsort(-cmx)
+
         cmx = cmx[order]
-        cmx.flags.writeable = False
         codes = codes[order]
-        codes.flags.writeable = False
-        ctm = pd.Series(cmx, index=codes)
-        ctm.missing = cmx.max() + 1
 
-        data[shape] = ctm
+        uniq = n_distinct(
+            decode_sequences(codes, shape=shape, base=nsymbols),
+            axis=1
+        )
+        cardinality = factorial(nsymbols) / factorial(nsymbols - uniq)
 
-    return MappingProxyType(data), ndim, nsymbols, nstates
+        for arr in (codes, cmx, cardinality):
+            arr.flags.writeable = False
+
+        df = pd.DataFrame({
+            'cmx': cmx,
+            'cardinality': np.round(cardinality).astype(int)
+        }, index=codes)
+
+        missing[shape] = cmx.max() + 1
+        data[shape] = df
+
+    return (
+        MappingProxyType(data),
+        MappingProxyType(missing),
+        ndim,
+        nsymbols,
+        nstates
+    )
 
 
 class CTMStore:
@@ -121,6 +144,9 @@ class CTMStore:
         CTM data lookup table mapping shape to
         :py:class:`pandas.Series` objects with
         estimated CTM complexities.
+    missing : mappingproxy
+        Map from shapes to CTM imputation values
+        for handling missing equivalence classes.
     ndim : int, positive
         Number of dimensions.
     nsymbols : int, positive
@@ -144,8 +170,9 @@ class CTMStore:
     In such cases missing values are substituted with the maximum
     stored CTM value plus ``1`` bit.
     """
-    def __init__(self, data, ndim, nsymbols, nstates):
+    def __init__(self, data, missing, ndim, nsymbols, nstates):
         self.data = data
+        self.missing = missing
         self.ndim = ndim
         self.nsymbols = nsymbols
         self.nstates = nstates
@@ -158,6 +185,9 @@ class CTMStore:
             s=self.nstates,
             id=hex(id(self))
         )
+
+    def __getitem__(self, shape):
+        return self.data[shape].cmx
 
     @property
     def name(self):
@@ -175,21 +205,64 @@ class CTMStore:
     def shapes(self):
         return list(self.data.keys())
 
-    @property
-    def coverage(self):
-        return {
-            shape: self.data[shape].size / \
-                count_ctm_classes(prod(shape), self.nsymbols)
-            for shape in self.data
-        }
+    @cached_property
+    def info(self):
+        """Basic information on the CTM dataset.
+
+        The `info` report consists of the follwing fields:
+
+        equiv_enum
+            Number of enumerated equivalence classes.
+
+        equiv_total
+            Number of total existing equivalence classes.
+
+        equiv_cov
+            Fraction of enumerated equivalence classes.
+
+        blocks_enum
+            Number of unique blocks covered by the enumerated e
+            quivalence classes.
+
+        blocks_total
+            Number of total unique blocks.
+
+        blocks_cov
+            Fraction of unique blocks covered by the enumerated equivalence
+            classes.
+            `
+        Returns
+        -------
+        mappingproxy
+            CTM report.
+        """
+        report = {}
+        for shape in self.data:
+            width = prod(shape)
+            equiv_enum = self[shape].size
+            equiv_total = count_ctm_classes(width, k=self.nsymbols)
+            equiv_cov = equiv_enum / equiv_total
+            blocks_enum = self.data[shape].cardinality.sum()
+            blocks_total = self.nsymbols**width
+            blocks_cov = blocks_enum / blocks_total
+            report[shape] = MappingProxyType(dict(
+                equiv_enum=equiv_enum,
+                equiv_total=equiv_total,
+                equiv_cov=equiv_cov,
+                blocks_enum=blocks_enum,
+                blocks_total=blocks_total,
+                blocks_cov=blocks_cov
+            ))
+        return MappingProxyType(report)
 
     # Constructors ------------------------------------------------------------
 
     @classmethod
     def from_params(cls, ndim, nsymbols, nstates=None):
         """Initialize from main parameters."""
-        data, ndim, nsymbols, nstates = _load_ctm_store(ndim, nsymbols, nstates)
-        return cls(data, ndim, nsymbols, nstates)
+        data, missing, ndim, nsymbols, nstates = \
+            _load_ctm_store(ndim, nsymbols, nstates)
+        return cls(data, missing, ndim, nsymbols, nstates)
 
     # -------------------------------------------------------------------------
 
@@ -203,5 +276,4 @@ class CTMStore:
         codes : 1D integer array
             Array of block codes.
         """
-        data = self.data[shape]
-        return data.reindex(codes).fillna(data.missing)
+        return self[shape].reindex(codes).fillna(self.missing[shape])

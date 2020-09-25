@@ -83,6 +83,13 @@ def n_distinct(arr, axis=None):
 
     Examples
     --------
+    >>> A = np.array([[0, 1], [2, 2]])
+    >>> n_distinct(A, axis=None)
+    3
+    >>> n_distinct(A, axis=0)
+    array([2, 2])
+    >>> n_distinct(A, axis=1)
+    array([2, 1])
     """
     arr = np.sort(arr, axis=axis)
     return (np.diff(arr, axis=axis or 0) != 0).sum(axis=axis) + 1
