@@ -12,11 +12,11 @@ class Perturbation:
     parts of a system having some causal significance as opposed
     to noise parts.
 
-    Parts which when perturbed yield negative contribution to the overall
-    complexity after change are likely to be important for the system,
-    since their removal make it more noisy. On the other hand parts that yield
-    positive contribution to the overall complexity after change are likely
-    to be noise since they elongate the system's description length.
+    Parts which when perturbed yield positive contribution to the overall
+    complexity are likely to be important for the system, since their
+    removal make it more noisy. On the other hand, parts with negative
+    contribution to the complexity are likely to be noise as their
+    removal drives the system towards shorter description length.
 
     Attributes
     ----------
@@ -49,58 +49,62 @@ class Perturbation:
     def __init__(self, bdm, X=None, metric='bdm'):
         """Initialization method."""
         self.bdm = bdm
-        self.metric = metric
+        self._metric = metric
+        self._X = X
         self._counter = None
         self._value = None
         self._ncounts = None
-        if self.metric == 'bdm':
-            self._method = self._update_bdm
-        elif self.metric == 'ent':
-            self._method = self._update_ent
-        else:
-            raise AttributeError("Incorrect metric, should be one of: 'bdm', 'ent'")
-        if X is None:
-            self.X = X
-        else:
-            self.set_data(X)
+        self.__method = None
 
     def __repr__(self):
         cn = self.__class__.__name__
         bdm = str(self.bdm)[1:-1]
         return "<{}(metric={}) with {}>".format(cn, self.metric, bdm)
 
+    # Properties --------------------------------------------------------------
+
+    @property
+    def metric(self):
+        return self._metric
+    @metric.setter
+    def metric(self, newval):
+        newval = newval.lower()
+        if newval == 'bdm':
+            self.__method = self._update_bdm
+        elif newval == 'ent':
+            self.__method = self._update_ent
+        else:
+            ValueError("Incorrect metric, should be one of: 'bdm', 'ent'")
+
+    @property
+    def X(self):
+        return self._X
+    @X.setter
+    def X(self, newval):
+        if newval is not None:
+            self.bdm.check_data(newval)
+            self._counter = self.bdm.decompose_and_count(newval)
+            if self.metric == 'bdm':
+                self._value = self.bdm.calc_bdm(self._counter)
+            elif self.metric == 'ent':
+                self._value = self.bdm.calc_ent(self._counter)
+                self._ncounts = \
+                    sum(sum(x.values()) for x in self._counter.values())
+        self._X = newval
+
     @property
     def size(self):
-        """Data size getter."""
         return self.X.size
 
     @property
     def shape(self):
-        """Data shape getter."""
         return self.X.shape
 
     @property
     def ndim(self):
-        """Data number of axes getter."""
         return self.X.ndim
 
-    def set_data(self, X):
-        """Set dataset for the perturbation experiment.
-
-        Parameters
-        ----------
-        X : array_like
-            Dataset to perturb.
-        """
-        self.bdm.check_data(X)
-        self.X = X
-        self._counter = self.bdm.decompose_and_count(X)
-        if self.metric == 'bdm':
-            self._value = self.bdm.calc_bdm(self._counter)
-        elif self.metric == 'ent':
-            self._value = self.bdm.calc_ent(self._counter)
-            self._ncounts = \
-                sum(sum(x.values()) for x in self._counter.values())
+    # Methods -----------------------------------------------------------------
 
     def _idx_to_parts(self, idx):
         def _slice(i, k):
@@ -219,7 +223,7 @@ class Perturbation:
                 ])
         if old_value == value:
             return 0
-        return self._method(idx, old_value, value, keep_changes)
+        return self.__method(idx, old_value, value, keep_changes)
 
     def run(self, idx=None, values=None, keep_changes=False):
         """Run perturbation experiment.
