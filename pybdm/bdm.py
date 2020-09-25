@@ -501,23 +501,26 @@ class BDM:
             x[shape] += cnt
         return x
 
-    def _get_max_bdm(self, counter):
-        bdm = 0
-        for shape in counter:
-            n_blocks = sum(counter[shape].values())
-            n_uniq = self.ctm[shape].size
-            n_cmx = min(n_blocks, n_uniq)
-            n_log = max(0, n_blocks - n_uniq)
-            p, q = divmod(n_log, n_uniq)
-            bdm += self.ctm[shape].values[:n_cmx].sum()
-            bdm += n_log * log2(p + 1) + q * log2(p + 2)
-        return bdm
-
     def _get_min_bdm(self, counter):
         bdm = 0
-        for shape in counter:
+        for shape, v in counter.items():
             cmx = self.ctm[shape][0]
-            freq = log2(sum(counter[shape].values()))
+            freq = log2(sum(v.values()))
+            bdm += cmx + freq
+        return bdm
+
+    def _get_max_bdm(self, counter):
+        bdm = 0
+        for shape, v in counter.items():
+            n_blocks = sum(v.values())
+            n_uniq = self.ctm.info[shape]['blocks_total']
+            n_enum = self.ctm.info[shape]['blocks_enum']
+            n_miss = min(n_blocks, n_uniq - n_enum)
+            n_cmx = min(n_blocks - n_miss, n_uniq)
+            div = min(n_blocks, n_uniq)
+            freq = div * log2(n_blocks / div)
+            cmx = n_miss * self.ctm.missing[shape] + \
+                self.ctm[shape].values[:n_cmx].sum()
             bdm += cmx + freq
         return bdm
 
