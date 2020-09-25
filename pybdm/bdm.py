@@ -398,12 +398,12 @@ class BDM:
             np.array(list(counter[shape].values()), dtype=INT_DTYPE)
             for shape in counter
         ])
-        N = freq.sum()
-        p = freq / N
+        n_blocks = freq.sum()
+        p = freq / n_blocks
         p = p[p > 0]
         ent = -(p*np.log2(p)).sum()
         if not rv:
-            ent *= N
+            ent *= n_blocks
         return ent
 
     def ent(self, X, normalized=False, check_data=None, rv=False, **kwds):
@@ -522,33 +522,24 @@ class BDM:
         return bdm
 
     def _get_max_ent(self, counter, rv=False):
-
-        def _make_freq(shape):
-            n_blocks = sum(counter[shape].values())
-            n_uniq = self.ctm.data[shape].size
-            p, q = divmod(n_blocks, n_uniq)
-            freq = np.full((n_uniq,), p, dtype=INT_DTYPE)
-            freq[:q] += 1
-            return freq
-
-        ent = 0
-        freq = np.hstack([ _make_freq(shape) for shape in counter ])
-        N = freq.sum()
-        p = freq / N
-        p = p[p > 0]
-        ent = -(p * np.log2(p)).sum()
+        n_blocks = np.hstack([
+            np.array(list(x.values()))
+            for x in counter.values()
+        ]).sum()
+        n_uniq = sum(self.nsymbols**(prod(s)) for s in counter)
+        ent = log2(min(n_blocks, n_uniq))
         if not rv:
-            ent *= N
+            ent *= n_blocks
         return ent
 
     def _get_min_ent(self, counter, rv=False):
         freq = np.array([
-            sum(counter[shape].values()) for shape in counter
+            sum(x.values()) for x in counter.values()
         ], dtype=INT_DTYPE)
-        N = freq.sum()
-        p = freq / N
+        n_blocks = freq.sum()
+        p = freq / n_blocks
         p = p[p > 0]
         ent = -(p * np.log2(p)).sum()
         if not rv:
-            ent *= N
+            ent *= n_blocks
         return ent
