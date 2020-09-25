@@ -103,7 +103,7 @@ class Perturbation:
 
     # Methods -----------------------------------------------------------------
 
-    def get_block(self, idx):
+    def get_blocks(self, idx):
         """Get block from an index of its element.
 
         Parameters
@@ -128,9 +128,37 @@ class Perturbation:
         >>> P.get_block((14,))
         array([12, 13, 14, 15])
         """
-        block_idx = get_block_idx(idx, shape=self.bdm.shape)
-        block_slice = get_block_slice(block_idx, shape=self.bdm.shape)
-        return self.X[block_slice]
+        block_idx = get_block_idx(idx, shape=self.shape)
+        if isinstance(block_idx, tuple):
+            yield self.X[get_block_slice(block_idx, shape=self.shape)]
+        else:
+            for i in block_idx:
+                yield self.X[get_block_slice(i, shape=self.shape)]
+
+    def _update_bdm(self, idx, values, **kwds):
+        # Count current blocks
+        freq, cmx = self.bdm.lookup(self.get_blocks(idx))
+        # current = self.bdm.count_blocks(blocks, **kwds)
+        # # Apply changes and count modified blocks
+        # if isinstance(idx, tuple):
+        #     idx = np.array(idx).reshape((1, -1), order='C')
+        # idx = tuple(zip(*idx))
+        # self.X[idx] = values
+        # coming = self.bdm.count_blocks(blocks, **kwds)
+        # # Determine which CTM values to add
+        # add_idx = coming.keydiff(self._counter)
+        # # Find count changes and calculate relative count changes
+        # change = coming - current
+        # delta = np.array([
+        #     v / self._counter[shape].get(k, 1)
+        #     for k, v in cnt
+        #     for shape, cnt in change.items()
+        # ])
+        # # Update global counter and find CTM values to remove
+        # self._counter.update(change)
+        # sub_idx = change.keydiff(self._counter)
+        # Update current BDM value
+
 
     def _update_bdm(self, idx, old_value, new_value, keep_changes):
         old_bdm = self._value

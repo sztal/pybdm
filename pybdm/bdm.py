@@ -21,6 +21,7 @@ from .partitions import get_partition
 from .ctm import CTMStore, INT_DTYPE
 from .encoding import encode_sequences, normalize_sequences
 from .utils import chunked_buckets
+from .counter import BlockCounter
 
 
 class BDM:
@@ -220,7 +221,7 @@ class BDM:
                 base=self.nsymbols
             )
             dct[shape] += Counter(zip(codes_n, codes))
-        return dict(dct)
+        return BlockCounter(dct)
 
     def decompose_and_count(self, X, **kwds):
         """Decompose a dataset and count blocks.
@@ -233,6 +234,20 @@ class BDM:
         """
         blocks = self.decompose(X)
         return self.count_blocks(blocks, **kwds)
+
+    def get_freq(self, counter):
+        """Get array for block frequencies."""
+        return np.hstack([
+            np.array(list(counter[shape].values()), dtype=INT_DTYPE)
+            for shape in counter
+        ])
+
+    def get_cmx(self, counter):
+        """Get array of CTM values."""
+        return np.hstack([
+            self.ctm.get(shape, map(lambda x: x[0], counter[shape]))
+            for shape in counter
+        ])
 
     def lookup(self, *counters):
         """Lookup CTM values.
@@ -249,15 +264,9 @@ class BDM:
         1D array_like
             CTM complexity values for unique blocks.
         """
-        counter = reduce(self._merge_counters, counters)
-        freq = np.hstack([
-            np.array(list(counter[shape].values()), dtype=INT_DTYPE)
-            for shape in counter
-        ])
-        cmx = np.hstack([
-            self.ctm.get(shape, map(lambda x: x[0], counter[shape]))
-            for shape in counter
-        ])
+        counter = reduce(lambda x, y: x + y, counters)
+        freq = self.get_freq(counter)
+        cmx = self.get_cmx(counter)
         return freq, cmx
 
     def calc_bdm(self, *counters):
@@ -393,11 +402,8 @@ class BDM:
         >>> bdm.compute_ent(c1, c2) # doctest: +FLOAT_CMP
         1.0
         """
-        counter = reduce(self._merge_counters, counters)
-        freq = np.hstack([
-            np.array(list(counter[shape].values()), dtype=INT_DTYPE)
-            for shape in counter
-        ])
+        counter = reduce(lambda x, y: x + y, counters)
+        freq = self.get_freq(counter)
         n_blocks = freq.sum()
         p = freq / n_blocks
         p = p[p > 0]
@@ -494,12 +500,6 @@ class BDM:
                 str(self.nsymbols-1),
                 ", ".join(str(s) for s in bad_symbols)
             ))
-
-    @staticmethod
-    def _merge_counters(x, y):
-        for shape, cnt in y.items():
-            x[shape] += cnt
-        return x
 
     def _get_min_bdm(self, counter):
         bdm = 0
