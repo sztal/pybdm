@@ -69,6 +69,10 @@ def _name_to_filepath(name):
 
 @lru_cache(maxsize=2**ceil(log2(len(CTM_DATASETS))))
 def _load_ctm_store(ndim, nsymbols, nstates=None):
+    def err(ndim, nsymbols, nstates):
+        msg = "CTM dataset with {n} states, {d} dimensions and {s} symbols not found" \
+            .format(n=nstates, d=ndim, s=nsymbols)
+        return LookupError(msg)
     try:
         if nstates is not None:
             datasets = CTM_DATASETS[nstates]
@@ -78,11 +82,13 @@ def _load_ctm_store(ndim, nsymbols, nstates=None):
     except:
         if not isinstance(nstates, int):
             nstates = 'any number of'
-        msg = "CTM dataset with {n} states, {d} dimensions and {s} symbols not found" \
-            .format(n=nstates, d=ndim, s=nsymbols)
-        raise LookupError(msg)
+        raise err(ndim, nsymbols, nstates)
 
-    name = datasets[(ndim, nsymbols)]
+    try:
+        name = datasets[(ndim, nsymbols)]
+    except KeyError:
+        raise err(ndim, nsymbols, nstates)
+
     nstates = int(name.split('-')[1][1:])
     filepath = _name_to_filepath(name)
 
@@ -172,7 +178,7 @@ class CTMStore:
     @property
     def coverage(self):
         return {
-            shape: len(self.data[shape]['data']) / \
+            shape: self.data[shape].size / \
                 count_ctm_classes(prod(shape), self.nsymbols)
             for shape in self.data
         }

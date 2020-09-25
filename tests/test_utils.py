@@ -1,7 +1,7 @@
 """Tests for utility functions."""
 import pytest
 import numpy as np
-from pybdm.utils import normalize_array, S2
+from pybdm.utils import normalize_array, n_distinct, S2
 
 
 @pytest.mark.parametrize('X,expected', [
@@ -24,3 +24,14 @@ def test_normalize_array(X, expected):
 def test_S2(n, k, expected):
     output = S2(n, k)
     assert output == expected
+
+@pytest.mark.parametrize('arr', [np.array([[1, 2, 0], [2, 1, 2]])])
+@pytest.mark.parametrize('axis', (None, 0, 1))
+def test_n_distinct(arr, axis):
+    output = n_distinct(arr, axis=axis)
+    if axis is None:
+        expected = np.unique(arr).size
+        assert output == expected
+    else:
+        expected = np.apply_along_axis(lambda x: len(set(x)), axis=axis, arr=arr)
+        assert np.array_equal(output, expected)

@@ -65,6 +65,28 @@ def chunked_buckets(iterable, n, key):
 
     yield from dct.items()
 
+def n_distinct(arr, axis=None):
+    """Count number of distinct elements in an array.
+
+    Parameters
+    ----------
+    arr : array_like
+        An array with arbitrary number of dimensions.
+    axis : int, optional
+        Axis to count elements by.
+        Count over all elements when ``None``.
+
+    Returns
+    -------
+    integer array or int
+        Counts of distinct values.
+
+    Examples
+    --------
+    """
+    arr = np.sort(arr, axis=axis)
+    return (np.diff(arr, axis=axis or 0) != 0).sum(axis=axis) + 1
+
 def S2(n, k):
     """Stirling numbers of the second kind.
 
