@@ -455,11 +455,11 @@ class BDM:
             self.check_data(X)
 
         counter = self.decompose_and_count(X, **kwds)
-        ent = self.calc_ent(counter, rv=rv)
+        ent = self.calc_ent(counter, rv=rv or normalized)
 
         if normalized:
-            min_ent = self._get_min_ent(counter, rv=rv)
-            max_ent = self._get_max_ent(counter, rv=rv)
+            min_ent = self._get_min_ent(counter)
+            max_ent = self._get_max_ent(counter)
             ent = (ent - min_ent) / (max_ent - min_ent)
 
         return ent
@@ -521,25 +521,20 @@ class BDM:
             bdm += cmx + freq
         return bdm
 
-    def _get_max_ent(self, counter, rv=False):
+    def _get_min_ent(self, counter):
+        freq = np.array([ len(v) for v in counter.values() ])
+        p = freq / freq.sum()
+        ent = -(p * np.log2(p)).sum()
+        return ent
+
+    def _get_max_ent(self, counter):
         n_blocks = np.hstack([
             np.array(list(x.values()))
             for x in counter.values()
         ]).sum()
-        n_uniq = sum(self.nsymbols**(prod(s)) for s in counter)
+        n_uniq = sum(
+            self.ctm.info[shape]['blocks_total']
+            for shape in counter
+        )
         ent = log2(min(n_blocks, n_uniq))
-        if not rv:
-            ent *= n_blocks
-        return ent
-
-    def _get_min_ent(self, counter, rv=False):
-        freq = np.array([
-            sum(x.values()) for x in counter.values()
-        ], dtype=INT_DTYPE)
-        n_blocks = freq.sum()
-        p = freq / n_blocks
-        p = p[p > 0]
-        ent = -(p * np.log2(p)).sum()
-        if not rv:
-            ent *= n_blocks
         return ent
