@@ -21,6 +21,7 @@ def test_normalize_sequences(arr, base, expected):
     assert np.array_equal(output, expected)
 
 @pytest.mark.parametrize('codes,shape,base,expected', [
+    (8, (4,), 2, np.array([1, 0, 0, 0])),
     (np.array([3, 8]), (4,), 2, np.array([[0, 0, 1, 1], [1, 0, 0, 0]])),
     (np.array([3, 8]), (4,), 4, np.array([[0, 0, 0, 3], [0, 0, 2, 0]])),
 ])

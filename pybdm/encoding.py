@@ -15,6 +15,7 @@ finite alphabet of symbols can be uniquely mapped to an integer code.
 Before encoding arrays are flattened in row-major (C-style) order.
 """
 from math import prod
+from functools import singledispatch
 import numpy as np
 
 
@@ -106,12 +107,13 @@ def normalize_sequences(arr, base=2):
 
     return arr
 
+@singledispatch
 def decode_sequences(codes, shape, base, dtype=int):
-    """Decode sequence from a sequence code.
+    """Decode sequence(s) from sequence code(s).
 
     Parameters
     ----------
-    codes : 1D non-negative integer array
+    codes : int or 1D non-negative integer ndarray
         Non-negative integers.
     shape : tuple of int
         Block shape for sequences.
@@ -125,6 +127,8 @@ def decode_sequences(codes, shape, base, dtype=int):
     -------
     array_like
         2D integer array.
+        Each row gives a sequence representing a single
+        block (flattened).
 
     Raises
     ------
@@ -133,13 +137,28 @@ def decode_sequences(codes, shape, base, dtype=int):
 
     Examples
     --------
-    >>> decode_sequence(4)
+    >>> decode_sequences(4, shape=(3,), base=2)
     array([1, 0, 0])
-    >>> decode_sequence(447, shape=(8,), base=4)
+    >>> decode_sequences(447, shape=(8,), base=4)
     array([0, 0, 0, 1, 2, 3, 3, 3])
+    >>> import numpy as np
+    >>> codes = np.array([4, 447])
+    >>> decode_sequences(codes, shape=(6,), base=4)
+    array([[0, 0, 0, 0, 1, 0]
+           [0, 1, 2, 3, 3, 3]])
     """
-    if isinstance(codes, int):
-        codes = np.array([codes], dtype=dtype)
+    width = prod(shape)
+    arr = np.zeros((width,), dtype=dtype)
+
+    for i in range(width):
+        div = base**(width - i - 1)
+        mult, codes = divmod(codes, div)
+        arr[i] = mult
+
+    return arr
+
+@decode_sequences.register(np.ndarray)
+def _(codes, shape, base, dtype=int):
     if codes.ndim != 1 or not issubclass(codes.dtype.type, np.integer):
         raise AttributeError("'codes' has to be 1D integer array")
 
@@ -148,7 +167,7 @@ def decode_sequences(codes, shape, base, dtype=int):
 
     for i in range(width):
         div = base**(width - i - 1)
-        mult, codes = divmod(codes, div)
+        mult, codes = np.divmod(codes, div)
         arr[:, i] = mult
 
     return arr
