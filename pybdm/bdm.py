@@ -345,10 +345,7 @@ class BDM:
         >>> bdm.bdm(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         25.176631293734488
         """
-        if check_data is None:
-            check_data = self.options.bdm_check_data
-        if check_data:
-            self.check_data(X)
+        self.check_data(X, check_data)
 
         counter = self.decompose_and_count(X, **kwds)
         cmx = self.calc_bdm(counter)
@@ -455,10 +452,7 @@ class BDM:
         >>> bdm.ent(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
         0.0
         """
-        if check_data is None:
-            check_data = self.options.bdm_check_data
-        if check_data:
-            self.check_data(X)
+        self.check_data(X, check_data)
 
         counter = self.decompose_and_count(X, **kwds)
         ent = self.calc_ent(counter, rv=rv or normalized)
@@ -481,11 +475,15 @@ class BDM:
         """
         return self.ent(X, normalized=True, **kwds)
 
-    def check_data(self, X):
+    def check_data(self, X, check=None):
         """Check if data is correctly formatted.
 
         Symbols have to mapped to integers from ``0`` to `self.nsymbols-1`.
         """
+        if check is None:
+            check = self.options.bdm_check_data
+        if not check:
+            return
         if not issubclass(X.dtype.type, np.integer):
             raise TypeError("'X' has to be an integer array")
         symbols = np.unique(X)

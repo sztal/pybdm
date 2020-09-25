@@ -50,12 +50,12 @@ class Perturbation:
     def __init__(self, bdm, X=None, metric='bdm'):
         """Initialization method."""
         self.bdm = bdm
+        self.__method = None
         self._metric = metric
-        self._X = X
         self._counter = None
         self._value = None
         self._ncounts = None
-        self.__method = None
+        self.X = X
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -136,57 +136,46 @@ class Perturbation:
                 yield self.X[get_block_slice(i, shape=self.shape)]
 
     def _update_bdm(self, idx, values, **kwds):
-        # Count current blocks
-        freq, cmx = self.bdm.lookup(self.get_blocks(idx))
-        # current = self.bdm.count_blocks(blocks, **kwds)
-        # # Apply changes and count modified blocks
-        # if isinstance(idx, tuple):
-        #     idx = np.array(idx).reshape((1, -1), order='C')
-        # idx = tuple(zip(*idx))
-        # self.X[idx] = values
-        # coming = self.bdm.count_blocks(blocks, **kwds)
-        # # Determine which CTM values to add
-        # add_idx = coming.keydiff(self._counter)
-        # # Find count changes and calculate relative count changes
-        # change = coming - current
-        # delta = np.array([
-        #     v / self._counter[shape].get(k, 1)
-        #     for k, v in cnt
-        #     for shape, cnt in change.items()
-        # ])
-        # # Update global counter and find CTM values to remove
-        # self._counter.update(change)
-        # sub_idx = change.keydiff(self._counter)
+        # Count current blocks (before applying changes)
+        blocks = list(self.get_blocks(idx))
+        old = self.bdm.count_blocks(blocks, **kwds)
+        # Apply changes and count modified blocks
+        if isinstance(idx, tuple):
+            idx = np.array(idx).reshape((1, -1), order='C')
+        idx = tuple(zip(*idx))
+        self.X[idx] = values
+        new = self.bdm.count_blocks(blocks, **kwds)
+        # Determine which CTM values to add
+        add_idx = {
+            k: v[:, 0] for k, v in
+            new.keydiff(self._counter).items()
+        }
+        # Update global counter and calculate relative count changes
+        change = new - old
+        delta = np.array([
+            1 + v / self._counter[shape][k]
+            for shape, cnt in change.items()
+            for k, v in cnt.items()
+            if k in self._counter[shape]
+        ])
+        delta = delta[delta > 0]
+        # Update global counter and find CTM values to remove
+        self._counter.update(change)
+        sub_idx = {
+            k: v[:, 0] for k, v in
+            change.keydiff(self._counter).items()
+        }
         # Update current BDM value
-
-
-    def _update_bdm(self, idx, old_value, new_value, keep_changes):
-        old_bdm = self._value
-        new_bdm = self._value
-        for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):
-            n = self._counter[(key, cmx)]
-            if n > 1:
-                new_bdm += np.log2((n-1) / n)
-                if keep_changes:
-                    self._counter[(key, cmx)] -= 1
-            else:
-                new_bdm -= cmx
-                if keep_changes:
-                    del self._counter[(key, cmx)]
-        self.X[idx] = new_value
-        for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):
-            n = self._counter.get((key, cmx), 0)
-            if n > 0:
-                new_bdm += np.log2((n+1) / n)
-            else:
-                new_bdm += cmx
-            if keep_changes:
-                self._counter.update([(key, cmx)])
-        if not keep_changes:
-            self.X[idx] = old_value
-        else:
-            self._value = new_bdm
-        return new_bdm - old_bdm
+        cmx_add = sum(
+            self.bdm.ctm.get(shape, i).sum()
+            for shape, i in add_idx.items()
+        )
+        cmx_sub = sum(
+            self.bdm.ctm.get(shape, i).sum()
+            for shape, i in sub_idx.items()
+        )
+        self._value += cmx_add - cmx_sub + np.log2(delta).sum()
+        return self._value
 
     def _update_ent(self, idx, old_value, new_value, keep_changes):
         old_ent = self._value

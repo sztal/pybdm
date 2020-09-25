@@ -3,6 +3,7 @@
 This class is designed only for the context of `pybdm`.
 Should be use for different purposes with caution.
 """
+from collections import Counter
 import numpy as np
 
 
@@ -38,23 +39,30 @@ class BlockCounter:
     def __setitem__(self, key, value):
         self.counters[key]= value
 
+    def __delitem__(self, key):
+        del self.counters[key]
 
     def __add__(self, other):
         """Add other block counter object."""
         out = self.copy()
         for shape, counter in other.items():
             out[shape].update(counter)
-        return out
+        return out._clean()
 
     def __sub__(self, other):
         """Subtract other block counter object."""
         out = self.copy()
         for shape, counter in other.items():
             out[shape].subtract(counter)
-        return out
+        return out._clean()
 
     def copy(self):
-        return self.__class__(self.counters.copy())
+        return self.__class__({
+            k: v.copy() for k, v in self.counters.items()
+        })
+
+    def get(self, key, fallback=None):
+        return self.counters.get(key, fallback)
 
     def items(self):
         return self.counters.items()
@@ -68,7 +76,7 @@ class BlockCounter:
         Non-positive counts can be present in `other`,
         but are dropped after updating from `self`.
         """
-        for shape in self:
+        for shape in other:
             self[shape] += other[shape]
 
     # -------------------------------------------------------------------------
@@ -82,10 +90,19 @@ class BlockCounter:
             From shapes to :py:class:`numpy.ndarrays` with
             normalized block codes.
         """
-        return {
+        dct = {
             shape: np.array([
                 k for k in counter if k not in other.get(shape, {})
             ]) for shape, counter in self.items()
         }
+        return { k: v for k, v in dct.items() if v.size > 0 }
+
+    def _clean(self):
+        for shape in self:
+            self[shape] = Counter({
+                k: v for k, v in self[shape].items() if v != 0
+            })
+        self.counters = { k: v for k, v in self.items() if v }
+        return self
 
     # -------------------------------------------------------------------------
