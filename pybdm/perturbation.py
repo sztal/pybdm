@@ -2,6 +2,7 @@
 from itertools import product
 from random import choice
 import numpy as np
+from .decompose import get_block_slice, get_block_idx
 
 
 class Perturbation:
@@ -93,35 +94,43 @@ class Perturbation:
         self._X = newval
 
     @property
-    def size(self):
-        return self.X.size
-
-    @property
     def shape(self):
-        return self.X.shape
+        return self.bdm.shape
 
     @property
     def ndim(self):
-        return self.X.ndim
+        return self.bdm.ndim
 
     # Methods -----------------------------------------------------------------
 
-    def _idx_to_parts(self, idx):
-        def _slice(i, k):
-            start = i - i % k
-            end = start + k
-            return slice(start, end)
-        try:
-            shift = self.bdm.partition.shift
-        except AttributeError:
-            shift = 0
-        shape = self.bdm.partition.shape
-        if shift == 0:
-            r_idx = tuple((k // l)*l for k, l in zip(idx, shape))
-            idx = tuple(slice(k, k+l) for k, l in zip(r_idx, shape))
-        else:
-            idx = tuple(slice(max(0, k-l+1), k+l) for k, l in zip(idx, shape))
-        yield from self.bdm.decompose(self.X[idx])
+    def get_block(self, idx):
+        """Get block from an index of its element.
+
+        Parameters
+        ----------
+        idx : tuple of int
+            Index of an element.
+
+        Returns
+        -------
+        array_like
+            Data block.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from pybdm import BDM, Perturbation
+        >>> bdm = BDM(ndim=1)
+        >>> X = np.arange(16)
+        >>> P = Perturbation(bdm, X=X)
+        >>> P.get_block((3,))
+        array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+        >>> P.get_block((14,))
+        array([12, 13, 14, 15])
+        """
+        block_idx = get_block_idx(idx, shape=self.bdm.shape)
+        block_slice = get_block_slice(block_idx, shape=self.bdm.shape)
+        return self.X[block_slice]
 
     def _update_bdm(self, idx, old_value, new_value, keep_changes):
         old_bdm = self._value

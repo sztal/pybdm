@@ -25,11 +25,16 @@ def test_get_block_slice(idx, shape, expected):
 
 @pytest.mark.parametrize('idx,shape,expected', [
     ((55,), (12,), (4,)),
-    ((3, 7), (4, 4), (0, 1))
+    ((3, 7), (4, 4), (0, 1)),
+    (np.array([[1, 1], [5, 10]]), (4, 4), np.array([[0, 0], [1, 2]])),
+    (np.array([[1, 1], [1, 2]]), (4, 4), np.array([[0, 0]]))
 ])
 def test_get_block_idx(idx, shape, expected):
     output = get_block_idx(idx, shape)
-    assert output == expected
+    if isinstance(output, np.ndarray):
+        assert np.array_equal(output, expected)
+    else:
+        assert output == expected
 
 @pytest.mark.parametrize('X,shape,expected', [
     (np.arange(8).reshape(4, 2), (2, 2),

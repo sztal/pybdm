@@ -10,6 +10,8 @@ of given shapes.
 """
 import math
 from itertools import product
+from functools import singledispatch
+import numpy as np
 
 
 def get_block_shape(X, shape):
@@ -74,15 +76,23 @@ def get_block_slice(idx, shape):
         raise ValueError("'idx' and 'shape' are not conformable")
     return tuple(slice(x*y, (x+1)*y) for x, y in zip(idx, shape))
 
-def get_block_idx(idx, shape):
+@singledispatch
+def get_block_idx(idx, shape, unique=True):
     """Get block index from raw index.
+
+    Multiple indexes can be passed at once as `numpy.ndarray` object
+    (with individual indices in rows).
 
     Parameters
     ----------
-    idx : tuple of int
-        Block index.
+    idx : tuple of int or ndarray
+        Raw index or array with raw indexes in rows.
     shape : tuple of int
         Data shape in block representation.
+    unique : bool
+        Should only unique block indexes be returned
+        in case multiple raw indexes are used.
+        Ignored when `idx` is a single `tuple`.
 
     Returns
     -------
@@ -101,9 +111,21 @@ def get_block_idx(idx, shape):
     >>> get_block_idx((6,10), (4,4))
     (1, 2)
     """
+    # pylint: disable=unused-argument
     if len(idx) != len(shape):
         raise ValueError("'idx' and 'shape' are not conformable")
-    return tuple(math.floor(x / y) for x, y in zip(idx, shape))
+    return tuple(x // y for x, y in zip(idx, shape))
+
+@get_block_idx.register(np.ndarray)
+def _(idx, shape, unique=True):
+    if isinstance(shape, tuple):
+        shape = np.array(shape)
+    if idx.ndim != 2 or idx.shape[1] != shape.size:
+        raise ValueError("'idx' and 'shape' are not conformable")
+    block_idx = idx // shape
+    if unique:
+        block_idx = np.unique(block_idx, axis=0)
+    return block_idx
 
 def iter_block_slices(X, shape):
     """Iterate over block slices.
