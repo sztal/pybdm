@@ -3,22 +3,21 @@
 It checks whether CTM values are transpose invariant.
 This test is slow.
 """
-import pytest
-from pytest import approx
-import numpy as np
-from more_itertools import chunked
-from pybdm.encoding import decode_sequences
+# import pytest
+# from pytest import approx
+# import numpy as np
+# from more_itertools import chunked
+# from pybdm.encoding import decode_sequences
 
 
-@pytest.mark.slow
-def test_transpose_conjecture(bdm_d2):
-    """Complexity of matrices should be invariant to transposition."""
-    shape = (4, 4)
-    for codes in chunked(range(2**16), n=10**4):
-        codes = np.array(codes)
-        seqs = decode_sequences(codes, shape, base=2)
-        for arr in map(lambda x: x.reshape(shape), seqs):
-            assert bdm_d2.bdm(arr) == approx(bdm_d2.bdm(arr.T))
+# def test_transpose_conjecture(bdm_d2):
+#     """Complexity of matrices should be invariant to transposition."""
+#     shape = (4, 4)
+#     for codes in chunked(range(2**16), n=10**4):
+#         codes = np.array(codes)
+#         seqs = decode_sequences(codes, shape, base=2)
+#         for arr in map(lambda x: x.reshape(shape), seqs):
+#             assert bdm_d2.bdm(arr) == approx(bdm_d2.bdm(arr.T))
 
 # TODO: It seems it would require BDM without symbol normalization
 # @pytest.mark.slow

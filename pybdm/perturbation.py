@@ -326,28 +326,22 @@ class Perturbation:
     def _update_ent(self, old, new, keep_changes):
         # Update global counter and calculate relative count changes
         change = new - old
-        delta = [
-            (self._counter[shape][k], v)
+        delta = np.array([
+            (v, self._counter[shape][k])
             for shape, cnt in change.items()
             for k, v in cnt.items()
-            if k in self._counter[shape]
-        ]
-        delta = np.array(delta)
-        N = self._ncounts
-        # Update entropy
-        if delta.size > 0:
-            n, x = tuple(delta.T)
-            delta_ = np.where(
-                (n + x > 0),
-                -n/N*np.log2((n+x)/n) - x/N*np.log2((n+x)/N),
-                -n/N*np.log2(n/N)
-            )
-            delta_cmx = delta_.sum()
-            # Rescale by the number of blocks
-            if not self.bdm.options.ent_rv:
-                delta_cmx *= N
-        else:
+        ])
+        if delta.size == 0:
             delta_cmx = 0
+        else:
+            delta[:, 0] += delta[:, 1]
+            p = delta / self._ncounts
+            p[p == 0] = 1
+            delta_cmx = np.diff(p*np.log2(p), axis=1).sum()
+            if not self.bdm.options.ent_rv:
+                delta_cmx *= self._ncounts
+        if keep_changes:
+            self._counter.update(change)
         return delta_cmx
 
     def make_step(self, step, keep_changes=None, **kwds):

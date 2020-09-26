@@ -14,11 +14,16 @@ def pytest_addoption(parser):
         '--slow', action='store_true', default=False,
         help="Run slow tests / benchmarks."""
     )
+    parser.addoption(
+        '--theory', action='store_true', default=False,
+        help="Run slow enumerative tests of theoretical properties."
+    )
 
 def pytest_collection_modifyitems(config, items):
     """Modify test runner behaviour based on `pytest` settings."""
     run_benchmarks = config.getoption('--benchmarks')
     run_slow = config.getoption('--slow')
+    run_theory = config.getoption('--theory')
     if run_benchmarks:
         skip_test = \
             pytest.mark.skip(reason="Only benchmarks are run with --benchmarks")
@@ -36,6 +41,11 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if 'slow' in item.keywords:
                 item.add_marker(skip_slow)
+    if not run_theory:
+        skip_theory = pytest.mark.skip(reason="Theory tests are run only with --theory")
+        for item in items:
+            if 'theory' in item.keywords:
+                item.add_marker(skip_theory)
 
 
 # Fixtures --------------------------------------------------------------------

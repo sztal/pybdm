@@ -95,7 +95,7 @@ class TestStep:
         assert all(np.array_equal(o, e) for o, e in zip(output, expected))
 
 @pytest.mark.slow
-class TestPerturbationExperiment:
+class TestPerturbation:
 
     def _assert_step(self, step, keep_changes, batch, metric, perturbation):
         # pylint: disable=unused-variable,too-many-locals
@@ -170,7 +170,7 @@ class TestPerturbationExperiment:
     ])
     @pytest.mark.parametrize('keep_changes', [False, True])
     @pytest.mark.parametrize('batch', [False, True])
-    @pytest.mark.parametrize('metric', ['bdm'])
+    @pytest.mark.parametrize('metric', ['ent', 'bdm'])
     def test_make_step_d2(self, step, keep_changes, batch, metric,
                           perturbation_d2):
         self._assert_step(step, keep_changes, batch, metric, perturbation_d2)
@@ -185,7 +185,7 @@ class TestPerturbationExperiment:
     ])
     @pytest.mark.parametrize('keep_changes', [False, True])
     @pytest.mark.parametrize('batch', [False, True])
-    @pytest.mark.parametrize('metric', ['bdm'])
+    @pytest.mark.parametrize('metric', ['ent', 'bdm'])
     def test_make_step_d2_rec(self, step, keep_changes, batch, metric,
                               perturbation_d2_rec):
         self._assert_step(step, keep_changes, batch, metric, perturbation_d2_rec)
@@ -199,7 +199,7 @@ class TestPerturbationExperiment:
     ])
     @pytest.mark.parametrize('keep_changes', [False, True])
     @pytest.mark.parametrize('batch', [False, True])
-    @pytest.mark.parametrize('metric', ['bdm'])
+    @pytest.mark.parametrize('metric', ['ent', 'bdm'])
     def test_make_step_d1(self, step, keep_changes, batch, metric,
                           perturbation_d1):
         self._assert_step(step, keep_changes, batch, metric, perturbation_d1)
@@ -213,7 +213,7 @@ class TestPerturbationExperiment:
     ])
     @pytest.mark.parametrize('keep_changes', [False, True])
     @pytest.mark.parametrize('batch', [False, True])
-    @pytest.mark.parametrize('metric', ['bdm'])
+    @pytest.mark.parametrize('metric', ['ent', 'bdm'])
     def test_make_step_d1_b9(self, step, keep_changes, batch, metric,
                              perturbation_d1_b9):
         self._assert_step(step, keep_changes, batch, metric, perturbation_d1_b9)
