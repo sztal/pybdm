@@ -77,6 +77,25 @@ def get_block_slice(idx, shape):
         raise ValueError("'idx' and 'shape' are not conformable")
     return tuple(slice(x*y, (x+1)*y) for x, y in zip(idx, shape))
 
+def get_block(X, idx, shape):
+    """Get dataset block.
+
+    Parameters
+    ----------
+    X : array_like
+        Array of arbitrary dimensions.
+    idx : tuple of int
+        Block index.
+    shape : tuple of int
+        Data shape in block representation.
+
+    Returns
+    -------
+    array_like
+        Dataset block.
+    """
+    return X[get_block_slice(idx, shape)]
+
 @singledispatch
 def get_block_idx(idx, shape, unique=True):
     """Get block index from raw index.
@@ -121,6 +140,12 @@ def get_block_idx(idx, shape, unique=True):
 def _(idx, shape, unique=True):
     if isinstance(shape, tuple):
         shape = np.array(shape)
+    idx = idx.squeeze()
+    if idx.ndim == 1:
+        if shape.size == 1:
+            idx = idx.reshape((-1, 1), order='C')
+        else:
+            idx = idx.reshape((1, -1), order='C')
     if idx.ndim != 2 or idx.shape[1] != shape.size:
         raise ValueError("'idx' and 'shape' are not conformable")
     block_idx = idx // shape

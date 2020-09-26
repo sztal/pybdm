@@ -39,7 +39,7 @@ class BDM:
         The more states the better approximation.
     shape : tuple of int
         Block shape. Has to be equal in all dimensions.
-    partition : pybdm.partitions._Partition
+    partition : pybdm.partitions.Partition
         Partition algorithm class object.
         The class is called with the `shape` attribute determined
         automatically if not passed and other attributes passed via ``**kwds``.
@@ -68,7 +68,7 @@ class BDM:
     #. **Partition (decomposition) stage.** First a dataset is decomposed
        into blocks. This is done by the :py:meth:`decompose` method.
        The method itself is dependent on the `partition` attribute which points
-       to a :py:mod:`pybdm.partitions._Partiion` object,
+       to a :py:mod:`pybdm.partitions.Partition` object,
        which implements and configures a particular variant
        of the decomposition algorithm. Detailed description of the available
        algorithms can be found in :doc:`theory`.

@@ -34,7 +34,7 @@ def get_partition(name_or_alias):
     raise NameError("unknown partition '{}'".format(name_or_alias))
 
 
-class _Partition:
+class Partition:
     """Partition algorithm base class.
 
     Attributes
@@ -57,6 +57,10 @@ class _Partition:
     def _get_params(self):
         return { 'shape': self.shape }
 
+    def block_predicate(self, block):
+        """Pass-all filter."""
+        return True
+
     def decompose(self, X):
         """Decompose a dataset into blocks.
 
@@ -70,7 +74,8 @@ class _Partition:
         array_like
             Dataset blocks.
         """
-        yield from block_decompose(X, shape=self.shape)
+        blocks = block_decompose(X, shape=self.shape)
+        yield from filter(self.block_predicate, blocks)
 
     def block_census(self, X):
         """Calculate block shape census of a dataset.
@@ -83,7 +88,7 @@ class _Partition:
         return Counter(map(lambda x: x.shape, self.decompose(X)))
 
 
-class PartitionIgnore(_Partition):
+class PartitionIgnore(Partition):
     """Partition with the 'ignore' boundary condition.
 
     Attributes
@@ -99,17 +104,12 @@ class PartitionIgnore(_Partition):
     """
     alias = 'ignore'
 
-    def decompose(self, X):
-        """Decompose with the 'ignore' boundary.
-
-        .. automethod:: _Partition.decompose
-        """
-        for block in super().decompose(X):
-            if block.shape == self.shape:
-                yield block
+    def block_predicate(self, block):
+        """Ignore blocks with non-standard shapes."""
+        return block.shape == self.shape
 
 
-class PartitionRecursive(_Partition):
+class PartitionRecursive(Partition):
     """Partition with the 'recursive' boundary condition.
 
     Attributes
@@ -151,6 +151,6 @@ class PartitionRecursive(_Partition):
     def decompose(self, X):
         """Decompose with the 'recursive' boundary.
 
-        .. automethod:: _Partition.decompose
+        .. automethod:: Partition.decompose
         """
         yield from self._decompose(X, shape=self.shape)

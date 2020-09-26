@@ -46,7 +46,7 @@ def perturbation_d1_ent(bdm_d1):
 class TestStep:
 
     @pytest.mark.parametrize('idx,expected', [
-        ((1, 1), np.array([1, 1])),
+        ((1, 1), np.array([[1, 1]])),
         ([(1, 1), (2, 1)], np.array([[1,1],[2,1]])),
         (((1, 1), (0, 1)), np.array([[1, 1],[0,1]])),
         (np.array([[0,1],[0,0]]), np.array([[0,1],[0,0]])),
@@ -72,28 +72,28 @@ class TestStep:
     def test_newvals(self, newvals, perturbation_d2):
         step = PerturbationStep(newvals=newvals)
         step.bind(perturbation_d2)
-        idx = tuple(step.idx.T)
         output = step.newvals
         if np.isscalar(newvals) or isinstance(newvals, np.ndarray):
             expected = newvals
         elif isinstance(newvals, Mapping):
             expected = np.array([
-                newvals[v] for v in step.ctx.X[idx]
+                newvals[v] for v in step.ctx.X[step.vidx]
             ])
         elif callable(newvals):
             expected = np.array([
-                newvals(v) for v in step.ctx.X[idx]
+                newvals(v) for v in step.ctx.X[step.vidx]
             ])
         elif newvals is None:
-            expected = np.where(step.ctx.X[idx] == 0, 1, 0)
+            expected = np.where(step.ctx.X[step.vidx] == 0, 1, 0)
         if isinstance(output, np.ndarray):
             assert np.array_equal(output, expected)
         else:
             assert output == expected
 
     @pytest.mark.parametrize('step,expected', [
-        (PS([(0,1),(0,0)]), [np.array([0,1]), np.array([0,0])]),
-        (PS(np.array([[0,1],[0,0]])), [np.array([0,1]),np.array([0,0])])
+        (PS((0,1)), [np.array([[0,1]])]),
+        (PS([(0,1),(0,0)]), [np.array([[0,1]]), np.array([[0,0]])]),
+        (PS(np.array([[0,1],[0,0]])), [np.array([[0,1]]),np.array([[0,0]])])
     ])
     def test_to_sequence(self, step, expected, perturbation_d2):
         step.bind(perturbation_d2)
@@ -104,24 +104,45 @@ class TestStep:
 @pytest.mark.slow
 class TestPerturbationExperiment:
 
-    @pytest.mark.parametrize('step', [
-        PS((0, 0)),
-        PS(np.nonzero, batch=True)
-    ])
-    @pytest.mark.parametrize('keep_changes', [False, True])
-    def test_make_step_d2(self, step, keep_changes, perturbation_d2):
-        P = perturbation_d2
-        X0 = P.X.copy()
-        cmx0 = P.bdm.bdm(P.X)
-        assert cmx0 == P._cmx
-        cmx1 = P.make_step(step, keep_changes=keep_changes)
+    def _assert_step(self, step, keep_changes, batch, perturbation):
+        X0 = perturbation.X.copy()
+        cmx0 = perturbation.bdm.bdm(X0)
+        assert cmx0 == perturbation._cmx
+        cmx1 = perturbation.make_step(step, keep_changes=keep_changes,
+                                      batch=batch)
         assert cmx1 != cmx0
         if keep_changes:
-            assert cmx1 == P._cmx
+            assert cmx1 == perturbation._cmx
         else:
-            assert P._cmx == cmx0
-            assert np.array_equal(P.X, X0)
+            assert perturbation._cmx == cmx0
+            assert np.array_equal(perturbation.X, X0)
 
+    @pytest.mark.parametrize('step', [
+        PS((0, 0)),
+        PS(np.argwhere, batch=True)
+    ])
+    @pytest.mark.parametrize('keep_changes', [False, True])
+    @pytest.mark.parametrize('batch', [False, True])
+    def test_make_step_d2(self, step, keep_changes, batch, perturbation_d2):
+        self._assert_step(step, keep_changes, batch, perturbation_d2)
+
+    @pytest.mark.parametrize('step', [
+        (np.array([0, 6, 13]),),
+        { 'idx': np.argwhere, 'batch': True }
+    ])
+    @pytest.mark.parametrize('keep_changes', [False, True])
+    @pytest.mark.parametrize('batch', [False, True])
+    def test_make_step_d1_b2(self, step, keep_changes, batch, perturbation_d1):
+        self._assert_step(step, keep_changes, batch, perturbation_d1)
+
+    @pytest.mark.parametrize('step', [
+        (np.array([1, 14, 26, 44, 4]),),
+        PS(np.argwhere, batch=True)
+    ])
+    @pytest.mark.parametrize('keep_changes', [False, True])
+    @pytest.mark.parametrize('batch', [False, True])
+    def test_make_step_d1_b9(self, step, keep_changes, batch, perturbation_d1_b9):
+        self._assert_step(step, keep_changes, batch, perturbation_d1_b9)
 
 #     @pytest.mark.parametrize('idx', [(0, 0), (1, 0), (10, 15), (24, 24)])
 #     @pytest.mark.parametrize('value', [1, 0, -1])

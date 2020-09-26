@@ -4,7 +4,7 @@ from itertools import cycle
 from functools import cached_property
 import numpy as np
 from tqdm import tqdm
-from .blocks import get_block_slice, get_block_idx
+from .blocks import get_block_idx, get_block
 
 
 class PerturbationStep:
@@ -44,6 +44,10 @@ class PerturbationStep:
         ``None`` means that new values are selected at random
         from the set of possible values (in a given alphabet)
         different from the current value.
+    vidx : ndarray
+        The same as `idx` but represented in a way suitable
+        for indexing other ndarrays to extract individual
+        elements.
     batch : bool
        Should step be treated as batch update.
        If ``False`` then even if the step defines multiple
@@ -83,14 +87,22 @@ class PerturbationStep:
         _idx = np.array(_idx)
         if isinstance(_idx, np.ndarray) and _idx.ndim == 1:
             _idx = _idx.reshape(1, -1)
-        return _idx.squeeze()
+        return _idx
+
+    @property
+    def vidx(self):
+        idx = self.idx
+        if idx.shape[0] == 1:
+            idx = (idx.squeeze(),)
+        else:
+            idx = tuple(idx.T)
+        return idx
 
     @cached_property
     def newvals(self):
         new = self._newvals
         if callable(new) or isinstance(new, Mapping) or new is None:
-            idx = tuple(self.idx.T)
-            values = self.ctx.X[idx]
+            values = self.ctx.X[self.vidx]
             new_values = np.empty_like(values)
 
             for k in range(self.ctx.nsymbols):
@@ -271,10 +283,14 @@ class Perturbation:
         """
         block_idx = get_block_idx(idx, shape=self.shape)
         if isinstance(block_idx, tuple):
-            yield self.X[get_block_slice(block_idx, shape=self.shape)]
+            block = get_block(self.X, block_idx, shape=self.shape)
+            if self.bdm.partition.block_predicate(block):
+                yield block
         else:
             for i in block_idx:
-                yield self.X[get_block_slice(i, shape=self.shape)]
+                block = get_block(self.X, i, shape=self.shape)
+                if self.bdm.partition.block_predicate(block):
+                    yield block
 
     def _update_bdm(self, old, new):
         # Determine which CTM values to add
@@ -349,6 +365,10 @@ class Perturbation:
         float :
             Complexity after change.
         """
+        if isinstance(step, Mapping):
+            step = PerturbationStep.from_dict(step)
+        elif isinstance(step, Sequence):
+            step = PerturbationStep.from_tuple(step)
         if bind:
             step.bind(self)
 
@@ -362,16 +382,16 @@ class Perturbation:
             ) for s in step.to_sequence() ]
 
         # Perform single/batch step
-        idx = step.idx
+        vidx = step.vidx
         newvals = step.newvals
-        oldvals = self.X[idx]
+        oldvals = self.X[vidx]
         old_cmx = self._cmx
 
         # Count current blocks (before applying changes)
-        blocks = list(self.get_blocks(idx))
+        blocks = list(self.get_blocks(step.idx))
         old = self.bdm.count_blocks(blocks, **kwds)
         # Apply changes and count modified blocks
-        self.X[idx] = newvals
+        self.X[vidx] = newvals
         new = self.bdm.count_blocks(blocks, **kwds)
 
         delta_cmx = self.method(old, new)
@@ -382,7 +402,7 @@ class Perturbation:
         if keep_changes:
             self._cmx = new_cmx
         else:
-            self.X[idx] = oldvals
+            self.X[vidx] = oldvals
 
         return new_cmx
 
