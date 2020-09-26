@@ -409,7 +409,7 @@ class BDM:
             ent *= n_blocks
         return ent
 
-    def ent(self, X, normalized=False, check_data=None, rv=False, **kwds):
+    def ent(self, X, normalized=False, check_data=None, rv=None, **kwds):
         """Block entropy of a dataset.
 
         Parameters
@@ -425,7 +425,8 @@ class BDM:
             Use `options` attribute if ``None``.
         rv : bool
             Calculate entropy of a single random variable
-            yielding a random block.
+            yielding a random block. Instance-level or global
+            options are used if ``None``.
         **kwds :
             Passed to :py:meth:`count_blocks`.
 
@@ -453,6 +454,7 @@ class BDM:
         0.0
         """
         self.check_data(X, check_data)
+        rv = rv if rv is not None else self.options.ent_rv
 
         counter = self.decompose_and_count(X, **kwds)
         ent = self.calc_ent(counter, rv=rv or normalized)
@@ -474,6 +476,23 @@ class BDM:
         ent : block entropy method
         """
         return self.ent(X, normalized=True, **kwds)
+
+    def cmx(self, X, metric='bdm', normalized=False, rv=False, **kwds):
+        """Helper for calculating both BDM and entropy.
+
+        Parameters
+        ----------
+        metric : {'bdm', 'ent'}
+            BDM or block entropy.
+        **kwds :
+            Passed to :py:meth:`count_blocks`.
+        """
+        metric = metric.lower().strip()
+        if metric == 'bdm':
+            return self.bdm(X, normalized=normalized, **kwds)
+        if metric == 'ent':
+            return self.ent(X, normalized=normalized, rv=rv, **kwds)
+        raise ValueError("'{}' has to be 'bdm' or 'ent'".format(metric))
 
     def check_data(self, X, check=None):
         """Check if data is correctly formatted.

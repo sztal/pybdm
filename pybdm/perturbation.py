@@ -4,7 +4,7 @@ from itertools import cycle
 from functools import cached_property
 import numpy as np
 from tqdm import tqdm
-from .blocks import get_block_idx, get_block
+from .blocks import get_blocks
 
 
 class PerturbationStep:
@@ -92,8 +92,8 @@ class PerturbationStep:
     @property
     def vidx(self):
         idx = self.idx
-        if idx.shape[0] == 1:
-            idx = (idx.squeeze(),)
+        if idx.ndim == 1:
+            idx = (idx,)
         else:
             idx = tuple(idx.T)
         return idx
@@ -140,6 +140,8 @@ class PerturbationStep:
         if newvals is None or np.isscalar(newvals):
             newvals = cycle(newvals)
         for i, v in zip(self.idx, newvals):
+            if self.idx.ndim == 2:
+                i = i.reshape((1, -1), order='C')
             yield self.__class__(
                 idx=i,
                 newvals=v,
@@ -281,18 +283,11 @@ class Perturbation:
         >>> P.get_block((14,))
         array([12, 13, 14, 15])
         """
-        block_idx = get_block_idx(idx, shape=self.shape)
-        if isinstance(block_idx, tuple):
-            block = get_block(self.X, block_idx, shape=self.shape)
+        for block in get_blocks(self.X, idx, shape=self.shape, unique=True):
             if self.bdm.partition.block_predicate(block):
                 yield block
-        else:
-            for i in block_idx:
-                block = get_block(self.X, i, shape=self.shape)
-                if self.bdm.partition.block_predicate(block):
-                    yield block
 
-    def _update_bdm(self, old, new):
+    def _update_bdm(self, old, new, keep_changes):
         # Determine which CTM values to add
         add_idx = {
             k: v[:, 0] for k, v in
@@ -313,6 +308,9 @@ class Perturbation:
             k: v[:, 0] for k, v in
             change.keydiff(self._counter).items()
         }
+        # Restore original state of the global counter
+        if not keep_changes:
+            self._counter.subtract(change)
         # Update current BDM value
         cmx_add = sum(
             self.bdm.ctm.get(shape, i).sum()
@@ -325,37 +323,34 @@ class Perturbation:
         delta_cmx = cmx_add - cmx_sub + np.log2(delta).sum()
         return delta_cmx
 
-    def _update_ent(self, idx, old_value, new_value, keep_changes):
-        old_ent = self._value
-        new_ent = self._value
-        for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):
-            n = self._counter[(key, cmx)]
-            p = n / self._ncounts
-            new_ent += p*np.log2(p)
-            if n > 1:
-                p = (n-1) / self._ncounts
-                new_ent -= p*np.log2(p)
-                if keep_changes:
-                    self._counter[(key, cmx)] -= 1
-            elif keep_changes:
-                del self._counter[(key, cmx)]
-        self.X[idx] = new_value
-        for key, cmx in self.bdm.lookup(self._idx_to_parts(idx)):
-            n = self._counter.get((key, cmx), 0) + 1
-            p = n / self._ncounts
-            new_ent -= p*np.log2(p)
-            if n > 1:
-                p = (n-1) / self._ncounts
-                new_ent += p*np.log2(p)
-            if keep_changes:
-                self._counter.update([(key, cmx)])
-        if not keep_changes:
-            self.X[idx] = old_value
+    def _update_ent(self, old, new, keep_changes):
+        # Update global counter and calculate relative count changes
+        change = new - old
+        delta = [
+            (self._counter[shape][k], v)
+            for shape, cnt in change.items()
+            for k, v in cnt.items()
+            if k in self._counter[shape]
+        ]
+        delta = np.array(delta)
+        N = self._ncounts
+        # Update entropy
+        if delta.size > 0:
+            n, x = tuple(delta.T)
+            delta_ = np.where(
+                (n + x > 0),
+                -n/N*np.log2((n+x)/n) - x/N*np.log2((n+x)/N),
+                -n/N*np.log2(n/N)
+            )
+            delta_cmx = delta_.sum()
+            # Rescale by the number of blocks
+            if not self.bdm.options.ent_rv:
+                delta_cmx *= N
         else:
-            self._cmx = new_ent
-        return new_ent - old_ent
+            delta_cmx = 0
+        return delta_cmx
 
-    def make_step(self, step, keep_changes=None, batch=None, bind=True, **kwds):
+    def make_step(self, step, keep_changes=None, **kwds):
         """Do perturbation step.
 
         See :py:meth:`run` for details.
@@ -365,22 +360,7 @@ class Perturbation:
         float :
             Complexity after change.
         """
-        if isinstance(step, Mapping):
-            step = PerturbationStep.from_dict(step)
-        elif isinstance(step, Sequence):
-            step = PerturbationStep.from_tuple(step)
-        if bind:
-            step.bind(self)
-
-        # Unwind sequential step
-        if step.batch is False or (step.batch is None and batch is False):
-            return [ self.make_step(
-                step=s,
-                keep_changes=keep_changes,
-                bind=False,
-                **kwds
-            ) for s in step.to_sequence() ]
-
+        step = self._prepare_step(step)
         # Perform single/batch step
         vidx = step.vidx
         newvals = step.newvals
@@ -394,7 +374,7 @@ class Perturbation:
         self.X[vidx] = newvals
         new = self.bdm.count_blocks(blocks, **kwds)
 
-        delta_cmx = self.method(old, new)
+        delta_cmx = self.method(old, new, keep_changes)
         new_cmx = old_cmx + delta_cmx
 
         if keep_changes is None:
@@ -406,8 +386,42 @@ class Perturbation:
 
         return new_cmx
 
-    def run(self, *steps, keep_changes=None, batch=None,
-            bind=True, verbose=True, **kwds):
+    def _prepare_step(self, step):
+        if isinstance(step, Mapping):
+            step = PerturbationStep.from_dict(step)
+        elif isinstance(step, Sequence):
+            step = PerturbationStep.from_tuple(step)
+        step.bind(self)
+        return step
+
+    def prepare_steps(self, *steps, batch=None):
+        """Prepare perturbation step sequence.
+
+        Parameters
+        ----------
+        *steps :
+            Perturbation steps defined as
+            :py:class:`PerturbationStep` objects.
+        batch : bool
+            Should step be treated as batch update.
+            If ``False`` then even if the step defines multiple
+            updates at once they will be performed sequentially
+            as separate steps. Instance attribute is used if ``None``.
+        bind : True
+            Should steps be bound to `self`.
+            Usually should be ``True``.
+        """
+        if batch is None:
+            batch = self.batch
+        for step in steps:
+            step = self._prepare_step(step)
+            # Unwind sequential steps
+            if step.batch is False or (step.batch is None and batch is False):
+                yield from step.to_sequence()
+            else:
+                yield step
+
+    def run(self, *steps, keep_changes=None, batch=None, verbose=True, **kwds):
         """Run perturbation experiment.
 
         Parameters
@@ -423,9 +437,6 @@ class Perturbation:
             If ``False`` then even if the step defines multiple
             updates at once they will be performed sequentially
             as separate steps. Instance attribute is used if ``None``.
-        bind : True
-            Should steps be bound to `self`.
-            Usually should be ``True``.
         **kwds :
             Passed to :py:meth:`pybdm.bdm.BDM.count_blocks`.
 
@@ -437,21 +448,14 @@ class Perturbation:
         cmx = [ self._cmx ]
         if keep_changes is None:
             keep_changes = self.keep_changes
-        if batch is None:
-            batch = self.batch
+
+        steps = self.prepare_steps(*steps, batch=batch)
 
         for step in tqdm(steps, disable=not verbose):
             _cmx = self.make_step(
                 step=step,
                 keep_changes=keep_changes,
-                batch=batch,
-                bind=bind,
                 **kwds
             )
-            if isinstance(_cmx, Sequence):
-                for x in _cmx:
-                    cmx.append(x)
-            else:
-                cmx.append(_cmx)
-
+            cmx.append(_cmx)
         return np.array(cmx)

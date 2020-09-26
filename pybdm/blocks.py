@@ -48,54 +48,6 @@ def get_block_shape(X, shape):
         raise ValueError("block 'shape' and 'X.ndim' are not conformable")
     return tuple(math.ceil(x / y) for x, y in zip(X.shape, shape))
 
-def get_block_slice(idx, shape):
-    """Get slice indices for the raw data array from block ids and block shape.
-
-    Parameters
-    ----------
-    idx : tuple of int
-        Block index.
-    shape : tuple of int
-        Data shape in block representation.
-
-    Returns
-    -------
-    tuple of slice
-        Slice indices of block elements in raw data array.
-
-    Raises
-    ------
-    ValueError
-        If `len(idx)` is not equal to `len(shape)`.
-
-    Examples
-    --------
-    >>> get_block_slice((2, 2), shape=(4,4))
-    (slice(8, 12, None), slice(8, 12, None))
-    """
-    if len(idx) != len(shape):
-        raise ValueError("'idx' and 'shape' are not conformable")
-    return tuple(slice(x*y, (x+1)*y) for x, y in zip(idx, shape))
-
-def get_block(X, idx, shape):
-    """Get dataset block.
-
-    Parameters
-    ----------
-    X : array_like
-        Array of arbitrary dimensions.
-    idx : tuple of int
-        Block index.
-    shape : tuple of int
-        Data shape in block representation.
-
-    Returns
-    -------
-    array_like
-        Dataset block.
-    """
-    return X[get_block_slice(idx, shape)]
-
 @singledispatch
 def get_block_idx(idx, shape, unique=True):
     """Get block index from raw index.
@@ -108,7 +60,7 @@ def get_block_idx(idx, shape, unique=True):
     idx : tuple of int or ndarray
         Raw index or array with raw indexes in rows.
     shape : tuple of int
-        Data shape in block representation.
+        Block shape.
     unique : bool
         Should only unique block indexes be returned
         in case multiple raw indexes are used.
@@ -140,18 +92,94 @@ def get_block_idx(idx, shape, unique=True):
 def _(idx, shape, unique=True):
     if isinstance(shape, tuple):
         shape = np.array(shape)
-    idx = idx.squeeze()
-    if idx.ndim == 1:
-        if shape.size == 1:
-            idx = idx.reshape((-1, 1), order='C')
-        else:
-            idx = idx.reshape((1, -1), order='C')
-    if idx.ndim != 2 or idx.shape[1] != shape.size:
+
+    elif idx.ndim == 1:
+        idx = idx.reshape((-1, 1), order='C')
+
+    if idx.shape[1] != shape.size:
         raise ValueError("'idx' and 'shape' are not conformable")
+
     block_idx = idx // shape
     if unique:
         block_idx = np.unique(block_idx, axis=0)
     return block_idx
+
+def get_block_slice(idx, shape):
+    """Get slice indices for the raw data array from block ids and block shape.
+
+    Parameters
+    ----------
+    idx : tuple of int
+        Block index.
+    shape : tuple of int
+       Block shape.
+
+    Returns
+    -------
+    tuple of slice
+        Slice indices of block elements in raw data array.
+
+    Raises
+    ------
+    ValueError
+        If `len(idx)` is not equal to `len(shape)`.
+
+    Examples
+    --------
+    >>> get_block_slice((2, 2), shape=(4,4))
+    (slice(8, 12, None), slice(8, 12, None))
+    """
+    if len(idx) != len(shape):
+        raise ValueError("'idx' and 'shape' are not conformable")
+    return tuple(slice(x*y, (x+1)*y) for x, y in zip(idx, shape))
+
+def get_block(X, idx, shape):
+    """Get dataset block.
+
+    Parameters
+    ----------
+    X : array_like
+        Array of arbitrary dimensions.
+    idx : tuple of int
+        Block index.
+    shape : tuple of int
+        Block shape.
+
+    Returns
+    -------
+    array_like
+        Dataset block.
+    """
+    if not isinstance(idx, tuple):
+        raise TypeError("'idx' has to be a tuple of integers")
+    block_idx = get_block_idx(idx, shape)
+    return X[get_block_slice(block_idx, shape)]
+
+def get_blocks(X, idx, shape, **kwds):
+    """Get dataset blocks.
+
+    Parameters
+    ----------
+    X : array_like
+        Array of arbitrary dimensions.
+    idx : tuple of int
+        Block index.
+    shape : tuple of int
+        Block shape.
+    **kwds :
+        Passed to :py:func:`get_block_idx`.
+
+    Yields
+    -------
+    array_like
+        Dataset block.
+    """
+    block_idx = get_block_idx(idx, shape, **kwds)
+    if isinstance(block_idx, tuple):
+        yield X[get_block_slice(block_idx, shape)]
+    else:
+        for i in block_idx:
+            yield X[get_block_slice(i, shape)]
 
 def iter_block_slices(X, shape):
     """Iterate over block slices.
@@ -231,6 +259,7 @@ class BlockCounter:
         A mapping from shape tuples to
         :py:class:`collections.Counter` objects.
     """
+    # TODO: reimplement this
     def __init__(self, counters):
         self.counters = dict(counters)
 
@@ -280,14 +309,25 @@ class BlockCounter:
     def values(self):
         return self.counters.values()
 
-    def update(self, other):
-        """Update `self` with respect to `other`.
+    def keys(self):
+        return self.counters.keys()
 
-        Non-positive counts can be present in `other`,
-        but are dropped after updating from `self`.
+    def update(self, other):
+        """Update `self` with respect to `other` in place.
         """
+        # pylint: disable=protected-access
         for shape in other:
-            self[shape] += other[shape]
+            self[shape].update(other[shape])
+            self[shape]._keep_positive()
+
+    def subtract(self, other):
+        """Subtract values from other block counter in place.
+        """
+        # pylint: disable=protected-access
+        for shape in other:
+            self[shape].subtract(other[shape])
+            self[shape]._keep_positive()
+
 
     # -------------------------------------------------------------------------
 

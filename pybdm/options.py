@@ -16,6 +16,9 @@ bdm_buffer_size : int
 bdm_check_data : bool
     Should data format be checked before running BDM calculations.
     May be disabled to gain some speed.
+ent_rv : bool
+    Should entropy of a single random block be calculated
+    instead of a sum over all blocks.
 """
 # pylint: disable=redefined-builtin,protected-access
 import numpy as np
@@ -23,7 +26,8 @@ import numpy as np
 _OPTIONS = {
     'bdm_if_zero': 'raise',
     'bdm_buffer_size': 5000,
-    'bdm_check_data': True
+    'bdm_check_data': True,
+    'ent_rv': False
 }
 
 
@@ -104,6 +108,15 @@ class Options:
         if not isinstance(newval, bool):
             raise ValueError("'bdm_check_data' has to be a boolean")
         self._dct['bdm_check_data'] = newval
+
+    @property
+    def ent_rv(self):
+        return self._opt['ent_rv']
+    @ent_rv.setter
+    def ent_rv(self, newval):
+        if not isinstance(newval, bool):
+            raise ValueError("'ent_rv' has to be a boolean")
+        self._dct['ent_rv'] = newval
 
 
 def set(**kwds):

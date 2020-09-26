@@ -1,12 +1,11 @@
 """Tests for the `algorithms` module."""
 # pylint: disable=redefined-outer-name,protected-access
 from collections.abc import Mapping
-from random import choice
 import pytest
 from pytest import approx
 import numpy as np
-from pybdm.bdm import BDM
 from pybdm.perturbation import Perturbation, PerturbationStep
+from pybdm.utils import random_idx
 
 
 PS = PerturbationStep
@@ -15,32 +14,26 @@ PS = PerturbationStep
 @pytest.fixture(scope='function')
 def perturbation_d2(bdm_d2):
     np.random.seed(1001)
-    X = np.random.randint(0, 2, (25, 25), dtype=int)
+    X = np.random.randint(0, 2, (100, 100), dtype=int)
     return Perturbation(bdm_d2, X)
+
+@pytest.fixture(scope='function')
+def perturbation_d2_rec(bdm_d2_rec):
+    np.random.seed(1001)
+    X = np.random.randint(0, 2, (100, 100), dtype=int)
+    return Perturbation(bdm_d2_rec, X)
 
 @pytest.fixture(scope='function')
 def perturbation_d1(bdm_d1):
     np.random.seed(999)
-    X = np.random.randint(0, 2, (100, ), dtype=int)
+    X = np.random.randint(0, 2, (500, ), dtype=int)
     return Perturbation(bdm_d1, X)
 
 @pytest.fixture(scope='function')
 def perturbation_d1_b9(bdm_d1_b9):
     np.random.seed(10101)
-    X = np.random.randint(0, 9, (100,), dtype=int)
+    X = np.random.randint(0, 9, (500,), dtype=int)
     return Perturbation(bdm_d1_b9, X)
-
-@pytest.fixture(scope='function')
-def perturbation_ent(bdm_d2):
-    np.random.seed(1001)
-    X = np.random.randint(0, 2, (25, 25), dtype=int)
-    return Perturbation(bdm_d2, X, metric='ent')
-
-@pytest.fixture(scope='function')
-def perturbation_d1_ent(bdm_d1):
-    np.random.seed(999)
-    X = np.random.randint(0, 2, (100, ), dtype=int)
-    return Perturbation(bdm_d1, X, metric='ent')
 
 
 class TestStep:
@@ -104,207 +97,123 @@ class TestStep:
 @pytest.mark.slow
 class TestPerturbationExperiment:
 
-    def _assert_step(self, step, keep_changes, batch, perturbation):
-        X0 = perturbation.X.copy()
-        cmx0 = perturbation.bdm.bdm(X0)
-        assert cmx0 == perturbation._cmx
-        cmx1 = perturbation.make_step(step, keep_changes=keep_changes,
-                                      batch=batch)
-        assert cmx1 != cmx0
-        if keep_changes:
-            assert cmx1 == perturbation._cmx
+    def _assert_step(self, step, keep_changes, batch, metric, perturbation):
+        # pylint: disable=unused-variable,too-many-locals
+        # pylint: disable=too-many-statements
+        P = perturbation
+        X0 = P.X.copy()
+        P.batch = batch
+        P.metric = metric
+        P.X = X0.copy()
+        bdm = perturbation.bdm
+        steps = list(P.prepare_steps(step))
+
+        step.bind(P)
+        main = step
+        idx = np.unique(main.idx, axis=0)
+
+        true0 = bdm.cmx(X0, metric=metric)
+        assert P._cmx == approx(true0)
+
+        # Batch scenario
+        if batch:
+            assert len(steps) == 1
+            S = steps[0]
+            vidx = S.vidx
+            vals = S.newvals
+            X1 = X0.copy()
+            X1[vidx] = vals
+            cmx_step = P.make_step(S, keep_changes=keep_changes)
+            cmx_data = bdm.cmx(P.X, metric=metric)
+            true1 = bdm.cmx(X1, metric=metric)
+            assert cmx_step == approx(true1)
+            if keep_changes:
+                assert (X1 == P.X).all()
+                changed = np.argwhere(P.X != X0)
+                assert np.array_equal(changed, idx)
+                assert cmx_step == approx(cmx_data)
+            else:
+                assert (P.X == X0).all()
+                assert cmx_data == approx(true0)
+        # Sequential scenario
         else:
-            assert perturbation._cmx == cmx0
-            assert np.array_equal(perturbation.X, X0)
+            X1 = X0.copy()
+            for i, S in enumerate(steps):
+                _idx = S.idx
+                vidx = S.vidx
+                vals = S.newvals
+                X2 = X1.copy()
+                X2[vidx] = vals
+                cmx_step = P.make_step(S, keep_changes=keep_changes)
+                cmx_data = bdm.cmx(P.X, metric=metric)
+                true1 = bdm.cmx(X2, metric=metric)
+                assert cmx_step == approx(true1)
+                if keep_changes:
+                    changed = np.argwhere(P.X != X1)
+                    assert np.array_equal(changed, _idx)
+                    assert (P.X == X2).all()
+                    assert cmx_step == approx(cmx_data)
+                    assert (P.X != X0).sum() == i + 1
+                    X1 = X2
+                else:
+                    assert cmx_data == approx(true0)
+                    assert (P.X == X0).all()
+                    assert (X2 != X0).sum() == 1
 
     @pytest.mark.parametrize('step', [
-        PS((0, 0)),
-        PS(np.argwhere, batch=True)
+        PS(lambda x: random_idx(x, n=1)),
+        PS(lambda x: random_idx(x, n=5)),
+        PS(lambda x: random_idx(x, n=10)),
+        PS(lambda x: random_idx(x, n=50)),
+        PS(lambda x: random_idx(x, n=100)),
+        PS(lambda x: random_idx(x, n=250))
     ])
     @pytest.mark.parametrize('keep_changes', [False, True])
     @pytest.mark.parametrize('batch', [False, True])
-    def test_make_step_d2(self, step, keep_changes, batch, perturbation_d2):
-        self._assert_step(step, keep_changes, batch, perturbation_d2)
+    @pytest.mark.parametrize('metric', ['bdm'])
+    def test_make_step_d2(self, step, keep_changes, batch, metric,
+                          perturbation_d2):
+        self._assert_step(step, keep_changes, batch, metric, perturbation_d2)
 
     @pytest.mark.parametrize('step', [
-        (np.array([0, 6, 13]),),
-        { 'idx': np.argwhere, 'batch': True }
+        PS(lambda x: random_idx(x, n=1)),
+        PS(lambda x: random_idx(x, n=5)),
+        PS(lambda x: random_idx(x, n=10)),
+        PS(lambda x: random_idx(x, n=50)),
+        PS(lambda x: random_idx(x, n=100)),
+        PS(lambda x: random_idx(x, n=250))
     ])
     @pytest.mark.parametrize('keep_changes', [False, True])
     @pytest.mark.parametrize('batch', [False, True])
-    def test_make_step_d1_b2(self, step, keep_changes, batch, perturbation_d1):
-        self._assert_step(step, keep_changes, batch, perturbation_d1)
+    @pytest.mark.parametrize('metric', ['bdm'])
+    def test_make_step_d2_rec(self, step, keep_changes, batch, metric,
+                              perturbation_d2_rec):
+        self._assert_step(step, keep_changes, batch, metric, perturbation_d2_rec)
 
     @pytest.mark.parametrize('step', [
-        (np.array([1, 14, 26, 44, 4]),),
-        PS(np.argwhere, batch=True)
+        PS(lambda x: random_idx(x, n=1)),
+        PS(lambda x: random_idx(x, n=5)),
+        PS(lambda x: random_idx(x, n=10)),
+        PS(lambda x: random_idx(x, n=50)),
+        PS(lambda x: random_idx(x, n=100))
     ])
     @pytest.mark.parametrize('keep_changes', [False, True])
     @pytest.mark.parametrize('batch', [False, True])
-    def test_make_step_d1_b9(self, step, keep_changes, batch, perturbation_d1_b9):
-        self._assert_step(step, keep_changes, batch, perturbation_d1_b9)
+    @pytest.mark.parametrize('metric', ['bdm'])
+    def test_make_step_d1(self, step, keep_changes, batch, metric,
+                          perturbation_d1):
+        self._assert_step(step, keep_changes, batch, metric, perturbation_d1)
 
-#     @pytest.mark.parametrize('idx', [(0, 0), (1, 0), (10, 15), (24, 24)])
-#     @pytest.mark.parametrize('value', [1, 0, -1])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_perturb(self, perturbation, idx, value, keep_changes):
-#         self._assert_perturb(
-#             perturbation, idx, value, keep_changes, metric='bdm'
-#         )
-
-#     @pytest.mark.parametrize('idx', [(0, 0), (1, 0), (10, 15), (24, 24)])
-#     @pytest.mark.parametrize('value', [1, 0, -1])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_perturb_overlap(self, perturbation_overlap, idx, value, keep_changes):
-#         self._assert_perturb(
-#             perturbation_overlap, idx, value, keep_changes, metric='bdm'
-#         )
-
-#     @pytest.mark.parametrize('idx', [(0, ), (1, ), (55, ), (99, )])
-#     @pytest.mark.parametrize('value', [1, 0, -1])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_perturb_d1(self, perturbation_d1, idx, value, keep_changes):
-#         self._assert_perturb(
-#             perturbation_d1, idx, value, keep_changes, metric='bdm'
-#         )
-
-#     @pytest.mark.parametrize('idx', [(0, ), (1, ), (55, ), (99, )])
-#     @pytest.mark.parametrize('value', [1, 0, -1])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_perturb_d1_overlap(self, perturbation_d1_overlap, idx, value, keep_changes):
-#         self._assert_perturb(
-#             perturbation_d1_overlap, idx, value, keep_changes, metric='bdm'
-#         )
-
-#     @pytest.mark.parametrize('idx', [(0,), (1,), (55,), (99,)])
-#     @pytest.mark.parametrize('value', [1, 0, -1])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_perturb_d1_b9(self, perturbation_d1_b9, idx, value, keep_changes):
-#         self._assert_perturb(
-#             perturbation_d1_b9, idx, value, keep_changes, metric='bdm'
-#         )
-
-#     @pytest.mark.parametrize('idx', [(0, 0), (1, 0), (10, 15), (24, 24)])
-#     @pytest.mark.parametrize('value', [1, 0, -1])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_perturb_ent(self, perturbation_ent, idx, value, keep_changes):
-#         self._assert_perturb(
-#             perturbation_ent, idx, value, keep_changes, metric='ent'
-#         )
-
-#     @pytest.mark.parametrize('idx', [(0, 0), (1, 0), (10, 15), (24, 24)])
-#     @pytest.mark.parametrize('value', [1, 0, -1])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_perturb_ent_overlap(self, perturbation_ent_overlap, idx,
-#                                  value, keep_changes):
-#         self._assert_perturb(
-#             perturbation_ent_overlap, idx, value, keep_changes, metric='ent'
-#         )
-
-#     @pytest.mark.parametrize('idx', [(0, ), (1, ), (55, ), (99, )])
-#     @pytest.mark.parametrize('value', [1, 0, -1])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_perturb_d1_ent(self, perturbation_d1_ent, idx, value, keep_changes):
-#         self._assert_perturb(
-#             perturbation_d1_ent, idx, value, keep_changes, metric='ent'
-#         )
-
-#     @pytest.mark.parametrize('idx', [(0, ), (1, ), (55, ), (99, )])
-#     @pytest.mark.parametrize('value', [1, 0, -1])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_perturb_d1_ent_overlap(self, perturbation_d1_ent_overlap, idx,
-#                                     value, keep_changes):
-#         self._assert_perturb(
-#             perturbation_d1_ent_overlap, idx, value, keep_changes, metric='ent'
-#         )
-
-#     def _assert_run(self, perturbation, idx, values, keep_changes):
-#         X0 = perturbation.X.copy()
-#         output = perturbation.run(idx, values, keep_changes=keep_changes)
-#         if idx is None:
-#             N_changes = prod(X0.shape)
-#         else:
-#             N_changes = idx.shape[0]
-#         assert output.shape[0] == N_changes
-#         if keep_changes:
-#             assert (X0 != perturbation.X).sum() == N_changes
-#             if idx is not None:
-#                 if idx.ndim == 1:
-#                     idx = np.expand_dims(idx, 1)
-#                 for row in idx:
-#                     _idx = tuple(row)
-#                     assert X0[_idx] != perturbation.X[_idx]
-#         else:
-#             assert np.array_equal(X0, perturbation.X)
-
-#     @pytest.mark.parametrize('idx,values', [
-#         (np.array([[0, 0], [0, 5], [10, 15]], dtype=int), np.array([-1, -1, -1], dtype=int)),
-#         (None, None),
-#         (np.array([[0, 1], [10, 10]], dtype=int), None)
-#     ])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_run(self, perturbation, idx, values, keep_changes):
-#         self._assert_run(perturbation, idx, values, keep_changes)
-
-#     @pytest.mark.parametrize('idx,values', [
-#         (np.array([[0, 0], [0, 5], [10, 15]], dtype=int), np.array([-1, -1, -1], dtype=int)),
-#         (None, None),
-#         (np.array([[0, 1], [10, 10]], dtype=int), None)
-#     ])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_run_overlap(self, perturbation_overlap, idx, values, keep_changes):
-#         self._assert_run(perturbation_overlap, idx, values, keep_changes)
-
-#     @pytest.mark.parametrize('idx,values', [
-#         (np.array([0, 5, 15], dtype=int), np.array([-1, -1, -1], dtype=int)),
-#         (None, None),
-#         (np.array([1, 10], dtype=int), None)
-#     ])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_run_d1(self, perturbation_d1, idx, values, keep_changes):
-#         self._assert_run(perturbation_d1, idx, values, keep_changes)
-
-#     @pytest.mark.parametrize('idx,values', [
-#         (np.array([0, 5, 15], dtype=int), np.array([-1, -1, -1], dtype=int)),
-#         (None, None),
-#         (np.array([1, 10], dtype=int), None)
-#     ])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_run_d1_overlap(self, perturbation_d1_overlap, idx, values, keep_changes):
-#         self._assert_run(perturbation_d1_overlap, idx, values, keep_changes)
-
-#     @pytest.mark.parametrize('idx,values', [
-#         (np.array([[0, 0], [0, 5], [10, 15]], dtype=int), np.array([-1, -1, -1], dtype=int)),
-#         (None, None),
-#         (np.array([[0, 1], [10, 10]], dtype=int), None)
-#     ])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_run_ent(self, perturbation_ent, idx, values, keep_changes):
-#         self._assert_run(perturbation_ent, idx, values, keep_changes)
-
-#     @pytest.mark.parametrize('idx,values', [
-#         (np.array([[0, 0], [0, 5], [10, 15]], dtype=int), np.array([-1, -1, -1], dtype=int)),
-#         (None, None),
-#         (np.array([[0, 1], [10, 10]], dtype=int), None)
-#     ])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_run_ent_overlap(self, perturbation_ent_overlap, idx, values, keep_changes):
-#         self._assert_run(perturbation_ent_overlap, idx, values, keep_changes)
-
-#     @pytest.mark.parametrize('idx,values', [
-#         (np.array([0, 5, 15], dtype=int), np.array([-1, -1, -1], dtype=int)),
-#         (None, None),
-#         (np.array([1, 10], dtype=int), None)
-#     ])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_run_ent_d1(self, perturbation_d1_ent, idx, values, keep_changes):
-#         self._assert_run(perturbation_d1_ent, idx, values, keep_changes)
-
-#     @pytest.mark.parametrize('idx,values', [
-#         (np.array([0, 5, 15], dtype=int), np.array([-1, -1, -1], dtype=int)),
-#         (None, None),
-#         (np.array([1, 10], dtype=int), None)
-#     ])
-#     @pytest.mark.parametrize('keep_changes', [True, False])
-#     def test_run_ent_d1_overlap(self, perturbation_d1_ent_overlap, idx, values, keep_changes):
-#         self._assert_run(perturbation_d1_ent_overlap, idx, values, keep_changes)
+    @pytest.mark.parametrize('step', [
+        PS(lambda x: random_idx(x, n=1)),
+        PS(lambda x: random_idx(x, n=5)),
+        PS(lambda x: random_idx(x, n=10)),
+        PS(lambda x: random_idx(x, n=50)),
+        PS(lambda x: random_idx(x, n=100))
+    ])
+    @pytest.mark.parametrize('keep_changes', [False, True])
+    @pytest.mark.parametrize('batch', [False, True])
+    @pytest.mark.parametrize('metric', ['bdm'])
+    def test_make_step_d1_b9(self, step, keep_changes, batch, metric,
+                             perturbation_d1_b9):
+        self._assert_step(step, keep_changes, batch, metric, perturbation_d1_b9)

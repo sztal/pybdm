@@ -49,5 +49,9 @@ def bdm_d2():
     return BDM(ndim=2)
 
 @pytest.fixture(scope='session')
+def bdm_d2_rec():
+    return BDM(ndim=2, partition='recursive', min_length=2)
+
+@pytest.fixture(scope='session')
 def bdm_d1_b9():
     return BDM(ndim=1, nsymbols=9, partition=PartitionRecursive, min_length=1)

@@ -94,6 +94,22 @@ def n_distinct(arr, axis=None):
     arr = np.sort(arr, axis=axis)
     return (np.diff(arr, axis=axis or 0) != 0).sum(axis=axis) + 1
 
+def random_idx(X, n):
+    """Get indexes of `n` random elements of `X`.
+
+    Parameters
+    ----------
+    X : array_like
+        Dataset.
+    n : int, positive.
+        Number of random elements.
+    """
+    # TODO: make it unique with constant n
+    return np.unique(np.column_stack([
+        np.random.randint(0, k, size=(n,))
+        for k in X.shape
+    ]), axis=0)
+
 def S2(n, k):
     """Stirling numbers of the second kind.
 
