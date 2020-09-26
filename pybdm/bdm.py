@@ -21,7 +21,7 @@ from .partitions import get_partition
 from .ctm import CTMStore, INT_DTYPE
 from .encoding import encode_sequences, normalize_sequences
 from .utils import chunked_buckets
-from .counter import BlockCounter
+from .blocks import BlockCounter
 
 
 class BDM:

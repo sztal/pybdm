@@ -5,7 +5,7 @@ from pytest import approx
 import numpy as np
 from joblib import Parallel, delayed
 from pybdm.bdm import BDM
-from pybdm.decompose import block_decompose
+from pybdm.blocks import block_decompose
 
 
 # Helpers ---------------------------------------------------------------------

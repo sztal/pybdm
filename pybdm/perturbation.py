@@ -1,8 +1,153 @@
 """Algorithms based on ``BDM`` objects."""
-from itertools import product
-from random import choice
+from collections.abc import Mapping, Sequence
+from itertools import cycle
+from functools import cached_property
 import numpy as np
-from .decompose import get_block_slice, get_block_idx
+from tqdm import tqdm
+from .blocks import get_block_slice, get_block_idx
+
+
+class PerturbationStep:
+    """Perturbation step.
+
+    Perturbation experiments are defined in steps each of which
+    can be either a single update or a batch of multiple updates.
+    Complexity changes are recorded for each step so both
+    atomic and compound changes can be studied.
+
+    Multiple sequential steps can be defined via single
+    `Step` object with compund `idx` and `newvals` by
+    setting `batch=False`.
+
+    Attributes
+    ----------
+    idx : tuple, list of tuples, 2D ndarray, callable or None
+        Indexes of elements to be perturbed.
+        A single `tuple` specifies one element.
+        Two-dimensional :py:class:`numpy.ndarray` objects
+        should define one element index per row.
+        Alternatively they can be specified as a boolean
+        mask which will be internally converted into
+        integer arrays with indexes.
+        Both arrays and sequences of tuples are interpreted
+        by default as batch perturbations.
+        If `callable` then it is called on the dataset
+        (:py:class:`Step` objects has to be bound)
+        to generate indices (in a form of tuples of an array).
+        If ``None`` then all elements are perturbed.
+    newvals : int, sequence of ints, mapping, callable or None
+        Single integers are applied to all elements.
+        Sequences must match length of `idx` and define new values
+        for individual elements. Mappings and callables are used
+        to define custom rules transforming current values
+        of elements given by `idx` to new values.
+        ``None`` means that new values are selected at random
+        from the set of possible values (in a given alphabet)
+        different from the current value.
+    batch : bool
+       Should step be treated as batch update.
+       If ``False`` then even if the step defines multiple
+       updates at once they will be performed sequentially
+       as separate steps. If ``None`` then perturbation context
+       settings are used.
+    ctx : Perturbation, optional
+        Context in which a step is performed.
+        May be changed with :py:meth:`bind` method.
+    """
+    def __init__(self, idx=None, newvals=None, batch=None, ctx=None):
+        self._idx = idx
+        self._newvals = newvals
+        self.batch = batch
+        self.ctx = ctx
+
+    def __repr__(self):
+        return "{cn}(idx={idx}, newvals={newvals}, batch={batch})".format(
+            cn=self.__class__.__name__,
+            idx=self._idx,
+            newvals=self._newvals,
+            batch=self.batch
+        )
+
+    @cached_property
+    def idx(self):
+        if callable(self._idx):
+            if self.ctx is None:
+                raise AttributeError("'ctx' has to be defined for callable 'idx'")
+            _idx = self._idx(self.ctx.X)
+        else:
+            _idx = self._idx
+        if _idx is None:
+            _idx = np.argwhere(np.ones_like(self.ctx.X, dtype=bool))
+        elif isinstance(_idx, np.ndarray) and _idx.dtype.type is np.bool_:
+            _idx = np.argwhere(_idx)
+        _idx = np.array(_idx)
+        if isinstance(_idx, np.ndarray) and _idx.ndim == 1:
+            _idx = _idx.reshape(1, -1)
+        return _idx.squeeze()
+
+    @cached_property
+    def newvals(self):
+        new = self._newvals
+        if callable(new) or isinstance(new, Mapping) or new is None:
+            idx = tuple(self.idx.T)
+            values = self.ctx.X[idx]
+            new_values = np.empty_like(values)
+
+            for k in range(self.ctx.nsymbols):
+                mask = values == k
+
+                if callable(new):
+                    new_values[mask] = new(k)
+                elif isinstance(new, Mapping):
+                    new_values[mask] = new[k]
+                else:
+                    if self.ctx.nsymbols == 2:
+                        new_values = np.where(values == 0, 1, 0)
+                    else:
+                        choices = np.array([
+                            x for x in range(self.ctx.nsymbols)
+                            if x != k
+                        ])
+                        new_values[mask] = \
+                            np.random.choice(choices, size=mask.sum())
+            return new_values
+        return self._newvals
+
+    def bind(self, ctx):
+        """Bind to a perturbation experiment context.
+
+        Parameters
+        ----------
+        ctx : Perturbation
+            Perturbation experiment object.
+        """
+        self.ctx = ctx
+
+    def to_sequence(self):
+        newvals = self.newvals
+        if newvals is None or np.isscalar(newvals):
+            newvals = cycle(newvals)
+        for i, v in zip(self.idx, newvals):
+            yield self.__class__(
+                idx=i,
+                newvals=v,
+                batch=True,
+                ctx=self.ctx
+            )
+
+    def to_tuple(self):
+        """Dump to tuple with indexes and new values."""
+        return self.idx, self.newvals
+
+    @classmethod
+    def from_tuple(cls, tup):
+        """Init from a tuple."""
+        return cls(*tup)
+
+    @classmethod
+    def from_dict(cls, dct):
+        """Init from a dict."""
+        return cls(**dct)
 
 
 class Perturbation:
@@ -27,35 +172,28 @@ class Perturbation:
         Dataset for perturbation analysis. May be set later.
     metric : {'bdm', 'ent'}
         Which metric to use for perturbing.
+    keep_changes : bool
+        Should changes be kept so perturbations are accumulated.
+    batch : bool
+       Should step be treated as batch update.
+       If ``False`` then even if the step defines multiple
+       updates at once they will be performed sequentially
+       as separate steps.
 
     See also
     --------
     pybdm.bdm.BDM : BDM computations
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> from pybdm import BDM, PerturbationExperiment
-    >>> X = np.random.randint(0, 2, (100, 100))
-    >>> bdm = BDM(ndim=2)
-    >>> pe = PerturbationExperiment(bdm, metric='bdm')
-    >>> pe.set_data(X)
-    >>> idx = np.argwhere(X) # Perturb only ones (1 --> 0)
-    >>> delta_bdm = pe.run(idx)
-    >>> len(delta_bdm) == idx.shape[0]
-    True
-
-    More examples can be found in :doc:`usage`.
     """
-    def __init__(self, bdm, X=None, metric='bdm'):
-        """Initialization method."""
+    def __init__(self, bdm, X=None, metric='bdm',
+                 keep_changes=False, batch=True):
         self.bdm = bdm
-        self.__method = None
-        self._metric = metric
+        self.metric = metric
         self._counter = None
-        self._value = None
+        self._cmx = None
         self._ncounts = None
         self.X = X
+        self.keep_changes = keep_changes
+        self.batch = batch
 
     def __repr__(self):
         cn = self.__class__.__name__
@@ -65,17 +203,8 @@ class Perturbation:
     # Properties --------------------------------------------------------------
 
     @property
-    def metric(self):
-        return self._metric
-    @metric.setter
-    def metric(self, newval):
-        newval = newval.lower()
-        if newval == 'bdm':
-            self.__method = self._update_bdm
-        elif newval == 'ent':
-            self.__method = self._update_ent
-        else:
-            ValueError("Incorrect metric, should be one of: 'bdm', 'ent'")
+    def method(self):
+        return getattr(self, '_update_'+self.metric)
 
     @property
     def X(self):
@@ -86,9 +215,9 @@ class Perturbation:
             self.bdm.check_data(newval)
             self._counter = self.bdm.decompose_and_count(newval)
             if self.metric == 'bdm':
-                self._value = self.bdm.calc_bdm(self._counter)
+                self._cmx = self.bdm.calc_bdm(self._counter)
             elif self.metric == 'ent':
-                self._value = self.bdm.calc_ent(self._counter)
+                self._cmx = self.bdm.calc_ent(self._counter)
                 self._ncounts = \
                     sum(sum(x.values()) for x in self._counter.values())
         self._X = newval
@@ -100,6 +229,18 @@ class Perturbation:
     @property
     def ndim(self):
         return self.bdm.ndim
+
+    @property
+    def nsymbols(self):
+        return self.bdm.nsymbols
+
+    @property
+    def nstates(self):
+        return self.bdm.nstates
+
+    @property
+    def options(self):
+        return self.bdm.options
 
     # Methods -----------------------------------------------------------------
 
@@ -135,16 +276,7 @@ class Perturbation:
             for i in block_idx:
                 yield self.X[get_block_slice(i, shape=self.shape)]
 
-    def _update_bdm(self, idx, values, **kwds):
-        # Count current blocks (before applying changes)
-        blocks = list(self.get_blocks(idx))
-        old = self.bdm.count_blocks(blocks, **kwds)
-        # Apply changes and count modified blocks
-        if isinstance(idx, tuple):
-            idx = np.array(idx).reshape((1, -1), order='C')
-        idx = tuple(zip(*idx))
-        self.X[idx] = values
-        new = self.bdm.count_blocks(blocks, **kwds)
+    def _update_bdm(self, old, new):
         # Determine which CTM values to add
         add_idx = {
             k: v[:, 0] for k, v in
@@ -174,8 +306,8 @@ class Perturbation:
             self.bdm.ctm.get(shape, i).sum()
             for shape, i in sub_idx.items()
         )
-        self._value += cmx_add - cmx_sub + np.log2(delta).sum()
-        return self._value
+        delta_cmx = cmx_add - cmx_sub + np.log2(delta).sum()
+        return delta_cmx
 
     def _update_ent(self, idx, old_value, new_value, keep_changes):
         old_ent = self._value
@@ -204,94 +336,102 @@ class Perturbation:
         if not keep_changes:
             self.X[idx] = old_value
         else:
-            self._value = new_ent
+            self._cmx = new_ent
         return new_ent - old_ent
 
-    def perturb(self, idx, value=-1, keep_changes=False):
-        """Perturb element of the dataset.
+    def make_step(self, step, keep_changes=None, batch=None, bind=True, **kwds):
+        """Do perturbation step.
 
-        Parameters
-        ----------
-        idx : tuple
-            Index tuple of an element.
-        value : int or callable or None
-            Value to assign.
-            If negative then new value is randomly selected from the set
-            of other possible values.
-            For binary data this is just a bit flip and no random numbers
-            generation is involved in the process.
-        keep_changes : bool
-            If ``True`` then changes in the dataset are persistent,
-            so each perturbation step depends on the previous ones.
+        See :py:meth:`run` for details.
 
         Returns
         -------
         float :
-            BDM value change.
-
-        Examples
-        --------
-        >>> from pybdm import BDM
-        >>> bdm = BDM(ndim=1)
-        >>> X = np.ones((30, ), dtype=int)
-        >>> perturbation = PerturbationExperiment(bdm, X)
-        >>> perturbation.perturb((10, ), -1) # doctest: +FLOAT_CMP
-        26.91763012739709
+            Complexity after change.
         """
-        old_value = self.X[idx]
-        if value < 0:
-            if self.bdm.nsymbols <= 2:
-                value = 1 if old_value == 0 else 0
-            else:
-                value = choice([
-                    x for x in range(self.bdm.nsymbols)
-                    if x != old_value
-                ])
-        if old_value == value:
-            return 0
-        return self.__method(idx, old_value, value, keep_changes)
+        if bind:
+            step.bind(self)
 
-    def run(self, idx=None, values=None, keep_changes=False):
+        # Unwind sequential step
+        if step.batch is False or (step.batch is None and batch is False):
+            return [ self.make_step(
+                step=s,
+                keep_changes=keep_changes,
+                bind=False,
+                **kwds
+            ) for s in step.to_sequence() ]
+
+        # Perform single/batch step
+        idx = step.idx
+        newvals = step.newvals
+        oldvals = self.X[idx]
+        old_cmx = self._cmx
+
+        # Count current blocks (before applying changes)
+        blocks = list(self.get_blocks(idx))
+        old = self.bdm.count_blocks(blocks, **kwds)
+        # Apply changes and count modified blocks
+        self.X[idx] = newvals
+        new = self.bdm.count_blocks(blocks, **kwds)
+
+        delta_cmx = self.method(old, new)
+        new_cmx = old_cmx + delta_cmx
+
+        if keep_changes is None:
+            keep_changes = self.keep_changes
+        if keep_changes:
+            self._cmx = new_cmx
+        else:
+            self.X[idx] = oldvals
+
+        return new_cmx
+
+    def run(self, *steps, keep_changes=None, batch=None,
+            bind=True, verbose=True, **kwds):
         """Run perturbation experiment.
 
         Parameters
         ----------
-        idx : array_like or None
-            *Numpy* integer array providing indexes (in rows) of elements
-            to perturb. If ``None`` then all elements are perturbed.
-        values : array_like or None
-            Value to assign during perturbation.
-            Negative values correspond to changing value to other
-            randomly selected symbols from the alphabet.
-            If ``None`` then all values are assigned this way.
-            If set then its dimensions must agree with the dimensions
-            of ``idx`` (they are horizontally stacked).
+        *steps :
+            Perturbation steps defined as
+            :py:class:`PerturbationStep` objects.
         keep_changes : bool
-            If ``True`` then changes in the dataset are persistent,
-            so each perturbation step depends on the previous ones.
+            Should changes be kept so perturbations are accumulated.
+            Use instance attribute if ``None``.
+        batch : bool
+            Should step be treated as batch update.
+            If ``False`` then even if the step defines multiple
+            updates at once they will be performed sequentially
+            as separate steps. Instance attribute is used if ``None``.
+        bind : True
+            Should steps be bound to `self`.
+            Usually should be ``True``.
+        **kwds :
+            Passed to :py:meth:`pybdm.bdm.BDM.count_blocks`.
 
         Returns
         -------
         array_like
             1D float array with perturbation values.
-
-        Examples
-        --------
-        >>> from pybdm import BDM
-        >>> bdm = BDM(ndim=1)
-        >>> X = np.ones((30, ), dtype=int)
-        >>> perturbation = PerturbationExperiment(bdm, X)
-        >>> changes = np.array([10, 20])
-        >>> perturbation.run(changes) # doctest: +FLOAT_CMP
-        array([26.91763013, 27.34823681])
         """
-        if idx is None:
-            indexes = [ range(k) for k in self.X.shape ]
-            idx = np.array(list(product(*indexes)), dtype=int)
-        if values is None:
-            values = np.full((idx.shape[0], ), -1, dtype=int)
-        return np.apply_along_axis(
-            lambda r: self.perturb(tuple(r[:-1]), r[-1], keep_changes=keep_changes),
-            axis=1,
-            arr=np.column_stack((idx, values))
-        )
+        cmx = [ self._cmx ]
+        if keep_changes is None:
+            keep_changes = self.keep_changes
+        if batch is None:
+            batch = self.batch
+
+        for step in tqdm(steps, disable=not verbose):
+            _cmx = self.make_step(
+                step=step,
+                keep_changes=keep_changes,
+                batch=batch,
+                bind=bind,
+                **kwds
+            )
+            if isinstance(_cmx, Sequence):
+                for x in _cmx:
+                    cmx.append(x)
+            else:
+                cmx.append(_cmx)
+
+        return np.array(cmx)

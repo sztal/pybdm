@@ -15,7 +15,7 @@ definition of normalized bdm (see :doc:`theory`).
 # pylint: disable=unused-argument
 from collections import Counter
 from importlib import import_module
-from .decompose import block_decompose
+from .blocks import block_decompose
 
 
 __all__ = [

@@ -1,8 +1,8 @@
 """Unit tests for decompose module."""
 import pytest
 import numpy as np
-from pybdm.decompose import get_block_shape, get_block_slice, get_block_idx
-from pybdm.decompose import iter_block_slices, block_decompose
+from pybdm.blocks import get_block_shape, get_block_slice, get_block_idx
+from pybdm.blocks import iter_block_slices, block_decompose
 
 
 @pytest.mark.parametrize('X,shape,expected', [

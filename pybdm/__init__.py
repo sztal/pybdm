@@ -8,7 +8,7 @@ Theory and the design of the package are described in :doc:`theory`.
 """
 from .bdm import BDM
 from .partitions import PartitionIgnore, PartitionRecursive
-from .perturbation import Perturbation
+from .perturbation import Perturbation, PerturbationStep
 
 __author__ = 'AlgoDyn Development Team'
 __email__ = 'stalaga@protonmail.com'
