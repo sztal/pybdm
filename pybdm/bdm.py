@@ -129,21 +129,21 @@ class BDM:
         self.ndim = ndim
         try:
             self.ctmname = ctmname if ctmname else self._ndim_to_ctm[(ndim, nsymbols)]
-        except KeyError:
+        except KeyError as key_error:
             msg = "no CTM dataset for 'ndim={}' and 'nsymbols={}'".format(
                 ndim, nsymbols
             )
-            raise CTMDatasetNotFoundError(msg)
+            raise CTMDatasetNotFoundError(msg) from key_error
         try:
             nsymbols, _shape = self.ctmname.split('-')[-2:]
-        except ValueError:
+        except ValueError as value_error:
             msg = "incorrect 'ctmname'; it should be in format " + \
                 "'name-b<nsymbols>-d<shape>'"
-            raise BDMConfigurationError(msg)
+            raise BDMConfigurationError(msg) from value_error
         self.nsymbols = int(nsymbols[1:])
         if shape is None:
             shape = tuple(int(x) for x in _shape[1:].split('x'))
-        if any([ x != shape[0] for x in shape ]):
+        if any(x != shape[0] for x in shape):
             raise BDMConfigurationError("'shape' has to be equal in each dimension")
         ctm, ctm_missing = get_ctm_dataset(self.ctmname)
         self._ctm = ctm
@@ -399,8 +399,7 @@ class BDM:
         return cmx
 
     def conditional_bdm(self, X, Y, min_length=0, check_data=True):
-        """Approximate complexity of a Coarse Conditional BDM(x|y)
-        [Hernández-Orozco S, Zenil H, (2021)](doi:10.3389/frai.2020.567356)
+        """Approximate complexity of a Coarse Conditional BDM(x|y) :cite:`hernndez_ml_2021`
 
         Parameters
         ----------
@@ -453,12 +452,12 @@ class BDM:
         if check_data:
             self._check_data(X)
             self._check_data(Y)
-        
-        # Backup previous value of shape in partition algorithm 
+
+        # Backup previous value of shape in partition algorithm
         old_shape = self.partition.shape
         # Find new minimal shape
         shape = list(old_shape)
-        for i in range(0, len(old_shape)):
+        for i, _ in enumerate(old_shape):
             shape[i] = min(min_length if min_length > 0 else old_shape[i], Y.shape[i])
         # use new shape in partition algorithm
         self.partition.shape = tuple(shape)
@@ -469,7 +468,7 @@ class BDM:
         adjDiff = Counter()
         for key, count in adjX.items():
             if key not in adjY:
-                adjDiff[key] = count    
+                adjDiff[key] = count
         # Restore previous value of shape in partition algorithm
         self.partition.shape = old_shape
         # Calculate the BDM(x|y)
@@ -477,10 +476,10 @@ class BDM:
         if self.raise_if_zero and options.get('raise_if_zero') and cmx == 0:
             raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
         return cmx
-    
+
     def compute_f_of_intersect(self, adjX, adjY):
         """Compute additional information f(n_xi, n_yi) based on Coarse Conditional BDM(x|y).
-        [Hernández-Orozco S, Zenil H, (2021)](doi:10.3389/frai.2020.567356)
+        :cite:`hernndez_ml_2021`
 
         Parameters
         ----------
@@ -512,7 +511,7 @@ class BDM:
             if elem in adjY and adjY[elem] != count:
                 bdm += log2(count)
         return bdm
-    
+
     def nbdm(self, X, **kwds):
         """Alias for normalized BDM
 
@@ -629,7 +628,7 @@ class BDM:
             raise ValueError("'X' has more than {} unique symbols".format(
                 self.nsymbols
             ))
-        valid_symbols = np.array([ _ for _ in range(self.nsymbols) ])
+        valid_symbols = np.arange(self.nsymbols)
         bad_symbols = symbols[~np.isin(symbols, valid_symbols)]
         if bad_symbols.size > 0:
             raise ValueError("'X' contains symbols outside of [0, {}]: {}".format(

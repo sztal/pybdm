@@ -39,6 +39,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinxcontrib.bibtex'
 ]
+bibtex_bibfiles = ['references.bib']
 
 
 # Napoleon settings

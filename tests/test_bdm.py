@@ -163,8 +163,16 @@ class TestBDM:
         assert output == approx(expected)
 
     @pytest.mark.parametrize('X,Y,expected', [
-        (array_from_string('010101010101010101111', shape=(21,)), array_from_string('010', shape=(3,)), 14.071500815885443),
-        (array_from_string('010101010101010101111', shape=(21,)), array_from_string('000', shape=(3,)), 19.57688365108973),
+        (
+            array_from_string('010101010101010101111', shape=(21,)),
+            array_from_string('010', shape=(3,)),
+            14.071500815885443
+        ),
+        (
+            array_from_string('010101010101010101111', shape=(21,)),
+            array_from_string('000', shape=(3,)),
+            19.57688365108973
+        ),
     ])
     def test_conditional_bdm(self, bdm_d1_collapse3, X, Y, expected):
         output = bdm_d1_collapse3.conditional_bdm(X, Y)
