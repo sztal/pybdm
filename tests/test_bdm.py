@@ -162,6 +162,14 @@ class TestBDM:
         output = bdm_d2.nent(X)
         assert output == approx(expected)
 
+    @pytest.mark.parametrize('X,Y,expected', [
+        (array_from_string('010101010101010101111', shape=(21,)), array_from_string('010', shape=(3,)), 14.071500815885443),
+        (array_from_string('010101010101010101111', shape=(21,)), array_from_string('000', shape=(3,)), 19.57688365108973),
+    ])
+    def test_conditional_bdm(self, bdm_d1_collapse3, X, Y, expected):
+        output = bdm_d1_collapse3.conditional_bdm(X, Y)
+        assert output == approx(expected)
+
     @pytest.mark.slow
     def test_bdm_parallel(self, bdm_d2):
         X = np.ones((500, 500), dtype=int)

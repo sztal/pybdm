@@ -398,6 +398,121 @@ class BDM:
             cmx = (cmx - min_cmx) / (max_cmx - min_cmx)
         return cmx
 
+    def conditional_bdm(self, X, Y, min_length=0, check_data=True):
+        """Approximate complexity of a Coarse Conditional BDM(x|y)
+        [Hernández-Orozco S, Zenil H, (2021)](doi:10.3389/frai.2020.567356)
+
+        Parameters
+        ----------
+        X : array_like
+            Dataset representation as a :py:class:`numpy.ndarray`.
+            Number of axes must agree with the `ndim` attribute.
+        Y : array_like
+            Dataset representation as a :py:class:`numpy.ndarray`.
+            Number of axes must agree with the `ndim` attribute.
+        min_length : int
+            Minimum parts' length. Non-negative.
+            In case of multidimensional objects it specifies minimum
+            length of any single dimension.
+            Default of 0 will use the min(X.shape,Y.shape)
+        check_data : bool
+            Should data format be checked.
+            May be disabled to gain some speed when calling multiple times.
+
+        Returns
+        -------
+        float
+            Approximate conditional algorithmic complexity K(x|y).
+
+        Raises
+        ------
+        TypeError
+            If `X` or `Y` is not an integer array and `check_data=True`.
+        ValueError
+            If `X` or `Y` has more than `nsymbols` unique values
+            and `check_data=True`.
+        ValueError
+            If `X` or `Y` has symbols outside of the ``0`` to `nsymbols-1` range
+            and `check_data=True`.
+        ValueError
+            If computed BDM value is 0 and `raise_if_zero` is ``True``.
+
+        Notes
+        -----
+        Detailed description can be found in :doc:`theory`.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> bdm = BDM(ndim=1, partition=PartitionCorrelated, shift=3)
+        >>> X = encoding.array_from_string('010101010101010101111', (21,))
+        >>> Y = encoding.array_from_string('010', (3,))
+        >>> bdm.conditional_bdm(X, Y) # doctest: +FLOAT_CMP
+        14.071500815885443
+        """
+        if check_data:
+            self._check_data(X)
+            self._check_data(Y)
+        
+        # Backup previous value of shape in partition algorithm 
+        old_shape = self.partition.shape
+        # Find new minimal shape
+        shape = list(old_shape)
+        for i in range(0, len(old_shape)):
+            shape[i] = min(min_length if min_length > 0 else old_shape[i], Y.shape[i])
+        # use new shape in partition algorithm
+        self.partition.shape = tuple(shape)
+        # Find adjX and adjY
+        adjX = self.decompose_and_count(X)
+        adjY = self.decompose_and_count(Y)
+        # Find set difference from adjX and adjY
+        adjDiff = Counter()
+        for key, count in adjX.items():
+            if key not in adjY:
+                adjDiff[key] = count    
+        # Restore previous value of shape in partition algorithm
+        self.partition.shape = old_shape
+        # Calculate the BDM(x|y)
+        cmx = self.compute_bdm(adjDiff) + self.compute_f_of_intersect(adjX, adjY)
+        if self.raise_if_zero and options.get('raise_if_zero') and cmx == 0:
+            raise ValueError("Computed BDM is 0, dataset may have incorrect dimensions")
+        return cmx
+    
+    def compute_f_of_intersect(self, adjX, adjY):
+        """Compute additional information f(n_xi, n_yi) based on Coarse Conditional BDM(x|y).
+        [Hernández-Orozco S, Zenil H, (2021)](doi:10.3389/frai.2020.567356)
+
+        Parameters
+        ----------
+        *counters :
+            Counter objects grouping object keys and occurences.
+
+        Returns
+        -------
+        float
+            f(n_xi, n_yi)
+
+        Notes
+        -----
+        Detailed description can be found in :doc:`theory`.
+
+        Examples
+        --------
+        >>> from collections import Counter
+        >>> bdm = BDM(ndim=1)
+        >>> c1 = Counter([('111111111111', 1.95207842085224e-08), ('111111111111', 1.95207842085224e-08)])
+        >>> c2 = Counter([('111111111111', 1.95207842085224e-08)])
+        >>> bdm.compute_f_of_intersect(c1, c2) # doctest: +FLOAT_CMP
+        1.0
+        """
+        if not isinstance(adjX, Counter) or not isinstance(adjY, Counter):
+            return NotImplemented
+        bdm = 0
+        for elem, count in adjX.items():
+            if elem in adjY and adjY[elem] != count:
+                bdm += log2(count)
+        return bdm
+    
     def nbdm(self, X, **kwds):
         """Alias for normalized BDM
 
