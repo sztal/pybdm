@@ -15,6 +15,9 @@ PyBDM: Python interface to the *Block Decomposition Method*
     :target: https://pybdm-docs.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
+.. image:: https://zenodo.org/badge/157923784.svg
+  :target: https://zenodo.org/doi/10.5281/zenodo.10652064
+
 The Block Decomposition Method (BDM) approximates algorithmic complexity
 of a dataset of arbitrary size, that is, the length of the shortest computer
 program that generates it. This is not trivial as algorithmic complexity
@@ -31,6 +34,14 @@ BDM and the necessary parts of the algorithmic information theory
 it is based on are described in `this article <https://www.mdpi.com/1099-4300/20/8/605>`_.
 
 See the official documentation_ for more information.
+
+How to cite?
+============
+
+    Talaga, S., & Tsampourakis, K. (2024). 
+    PyBDM: Python interface to the Block Decomposition Method (0.1.0) [Software]. 
+    https://zenodo.org/doi/10.5281/zenodo.10652064
+
 
 
 Installation
