@@ -82,7 +82,7 @@ class TestPerturbationExperiment:
     ])
     def test_idx_to_parts(self, perturbation, idx, expected):
         expected = [ perturbation.X[s] for s in expected ]
-        output = [ x for x in perturbation._idx_to_parts(idx) ]
+        output = list(perturbation._idx_to_parts(idx))
         assert len(output) == len(expected)
         for o, e in zip(output, expected):
             assert np.array_equal(o, e)
@@ -104,7 +104,7 @@ class TestPerturbationExperiment:
     def test_idx_to_parts_overlap(self, perturbation_overlap, idx,  expected):
         perturbation = perturbation_overlap
         expected = [ perturbation.X[s] for s in expected ]
-        output = [ x for x in perturbation._idx_to_parts(idx) ]
+        output = list(perturbation._idx_to_parts(idx))
         assert len(output) == len(expected)
         for o, e in zip(output, expected):
             assert np.array_equal(o, e)

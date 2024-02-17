@@ -59,5 +59,5 @@ def get(name=None):
         return _options.copy()
     try:
         return _options[name]
-    except KeyError:
-        raise KeyError("there is no '{}' option".format(name))
+    except KeyError as key_error:
+        raise KeyError("there is no '{}' option".format(name)) from key_error
