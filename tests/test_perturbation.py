@@ -5,8 +5,9 @@ from random import choice
 import pytest
 from pytest import approx
 import numpy as np
+import networkx as nx
 from pybdm.bdm import BDM
-from pybdm.partitions import PartitionCorrelated
+from pybdm.partitions import PartitionCorrelated, PartitionPeriodic
 from pybdm.algorithms import PerturbationExperiment
 from pybdm.utils import prod
 
@@ -69,6 +70,17 @@ def perturbation_d1_ent_overlap():
     bdm = BDM(ndim=1, partition=PartitionCorrelated, shift=1)
     return PerturbationExperiment(bdm, X, metric='ent')
 
+@pytest.fixture(scope='function')
+def deconvolve_ladder_complete_graph():
+    graphs = {
+        'L-': nx.ladder_graph(10),
+        'C-': nx.complete_graph(10),
+    }
+    X = nx.union_all(graphs.values(), graphs.keys())
+    X = nx.to_numpy_array(X, dtype=int)
+    X[(0,20), (20,0)] = 1
+    bdm = BDM(ndim=2, partition=PartitionPeriodic)
+    return PerturbationExperiment(bdm, X)
 
 @pytest.mark.slow
 class TestPerturbationExperiment:
@@ -82,7 +94,7 @@ class TestPerturbationExperiment:
     ])
     def test_idx_to_parts(self, perturbation, idx, expected):
         expected = [ perturbation.X[s] for s in expected ]
-        output = [ x for x in perturbation._idx_to_parts(idx) ]
+        output = list(perturbation._idx_to_parts(idx))
         assert len(output) == len(expected)
         for o, e in zip(output, expected):
             assert np.array_equal(o, e)
@@ -104,7 +116,7 @@ class TestPerturbationExperiment:
     def test_idx_to_parts_overlap(self, perturbation_overlap, idx,  expected):
         perturbation = perturbation_overlap
         expected = [ perturbation.X[s] for s in expected ]
-        output = [ x for x in perturbation._idx_to_parts(idx) ]
+        output = list(perturbation._idx_to_parts(idx))
         assert len(output) == len(expected)
         for o, e in zip(output, expected):
             assert np.array_equal(o, e)
@@ -138,6 +150,10 @@ class TestPerturbationExperiment:
         elif not keep_changes:
             assert np.array_equal(X0, perturbation.X)
             assert perturbation._counter == C0
+
+    def _assert_deconvolution(self, perturbation, auxiliary_cutoff, is_directed, expected):
+        result = perturbation.deconvolve(auxiliary_cutoff=auxiliary_cutoff, is_directed=is_directed)
+        assert np.array_equal(result.edges_for_deletion, expected)
 
     @pytest.mark.parametrize('idx', [(0, 0), (1, 0), (10, 15), (24, 24)])
     @pytest.mark.parametrize('value', [1, 0, -1])
@@ -303,3 +319,14 @@ class TestPerturbationExperiment:
     @pytest.mark.parametrize('keep_changes', [True, False])
     def test_run_ent_d1_overlap(self, perturbation_d1_ent_overlap, idx, values, keep_changes):
         self._assert_run(perturbation_d1_ent_overlap, idx, values, keep_changes)
+
+    @pytest.mark.parametrize('auxiliary_cutoff,is_directed,expected', [
+        (20, False, np.array([[0,20],[20,0]])),
+        (20, True, np.array([[20,0]]))
+    ])
+    def test_deconvolve_ladder_complete(
+        self, deconvolve_ladder_complete_graph, auxiliary_cutoff, is_directed, expected
+    ):
+        self._assert_deconvolution(
+            deconvolve_ladder_complete_graph, auxiliary_cutoff, is_directed, expected
+        )

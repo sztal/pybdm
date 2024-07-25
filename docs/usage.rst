@@ -14,19 +14,23 @@ Different boundary conditions (see :doc:`/theory`) are implemented by
 .. code-block:: python
 
     from pybdm import BDM
-    from pybdm import PartitionIgnore, PartitionRecursive, PartitionCorrelated
+    from pybdm import PartitionIgnore, PartitionRecursive, PartitionCorrelated, PartitionPeriodic
 
     bdm_ignore = BDM(ndim=1, partition=PartitionIgnore)
     # This is default so it is equivalent to
     bdm_ignore = BDM(ndim=1)
 
-    bdm_recurisve = BDM(ndim=1, partition=PartitionRecursive, min_length=2)
+    bdm_recursive = BDM(ndim=1, partition=PartitionRecursive, min_length=2)
     # Minimum size is specified as length, since only symmetric slices
     # are accepted in the case of multidimensional objects.
 
     bdm_correlated = BDM(ndim=1, partition=PartitionCorrelated)
     # Step-size defaults to 1, so this is equivalent to
     bdm_correlated = BDM(ndim=1, partition=PartitionCorrelated, shift=1)
+
+    bdm_periodic = BDM(ndim=1, partition=PartitionPeriodic)
+    # This is similar to PartitionIgnore but the dataset is extended 
+    # depending on the shape of the partition
 
 
 Normalized BDM

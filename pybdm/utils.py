@@ -66,7 +66,7 @@ def iter_slices(X, shape, shift=0):
     [(slice(0, 3, None), slice(0, 3, None)), (slice(3, 5, None), slice(0, 3, None))]
     """
     if len(set(shape)) != 1:
-        raise AttributeError("Partition shape is not symmetric {}".format(shape))
+        raise AttributeError(f"Partition shape is not symmetric {shape}")
     if len(shape) != X.ndim:
         raise AttributeError(
             "dataset and slice shape does not have the same number of axes"
@@ -150,7 +150,7 @@ def list_ctm_datasets():
     >>> list_ctm_datasets()
     ['CTM-B2-D12', 'CTM-B2-D4x4', 'CTM-B4-D12', 'CTM-B5-D12', 'CTM-B6-D12', 'CTM-B9-D12']
     """
-    return [ x for x in sorted(_ctm_datasets.keys()) ]
+    return list(sorted(_ctm_datasets.keys()))
 
 @lru_cache(maxsize=2**int(np.ceil(np.log2(len(_ctm_datasets)))))
 def get_ctm_dataset(name):
@@ -175,7 +175,7 @@ def get_ctm_dataset(name):
         If non-existent CTM dataset is requested.
     """
     if name not in _ctm_datasets:
-        raise ValueError("There is no {} CTM dataset".format(name))
+        raise ValueError(f"There is no {name} CTM dataset")
     with resource_stream(_ctmdata_path, _ctm_datasets[name]) as stream:
         dct = pickle.loads(gzip.decompress(stream.read()))
     for key in dct:

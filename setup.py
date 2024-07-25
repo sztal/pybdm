@@ -2,24 +2,22 @@
 
 import os
 import sys
-
-try:
-    from setuptools import setup, find_packages
-except ImportError:
-    from distutils.core import setup
-
+from setuptools import setup, find_packages
 
 if sys.argv[-1] == 'publish':
     os.system('python setup.py sdist upload')
     sys.exit()
 
-readme = open('README.rst').read()
+with open('README.rst', encoding='utf-8') as file:
+    readme = file.read()
 doclink = """
 Documentation
 -------------
 
 The full documentation is at http://pybdm-docs.rtfd.org."""
-history = open('HISTORY.rst').read().replace('.. :changelog:', '')
+
+with open('HISTORY.rst', encoding='utf-8') as file:
+    history = file.read().replace('.. :changelog:', '')
 
 setup(
     name='pybdm',

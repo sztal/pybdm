@@ -11,7 +11,9 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys, os
+import sys
+import os
+import pybdm
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -21,8 +23,6 @@ import sys, os
 cwd = os.getcwd()
 parent = os.path.dirname(cwd)
 sys.path.insert(0, parent)
-
-import pybdm
 
 # -- General configuration -----------------------------------------------------
 
@@ -40,6 +40,8 @@ extensions = [
     'sphinxcontrib.bibtex'
 ]
 
+# Bibtex reference directory
+bibtex_bibfiles = ['references.bib']
 
 # Napoleon settings
 napoleon_google_docstring = False
@@ -74,8 +76,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'PyBDM'
-copyright = u'2019, Szymon Talaga'
+project = 'PyBDM'
+copyright = '2019, Szymon Talaga'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -157,7 +159,7 @@ html_theme = 'sphinx_rtd_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -220,8 +222,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'pybdm.tex', u'PyBDM Documentation',
-   u'Szymon Talaga', 'manual'),
+  ('index', 'pybdm.tex', 'PyBDM Documentation',
+   'Szymon Talaga', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -250,8 +252,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'pybdm', u'PyBDM Documentation',
-     [u'Szymon Talaga'], 1)
+    ('index', 'pybdm', 'PyBDM Documentation',
+     ['Szymon Talaga'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -264,8 +266,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'pybdm', u'PyBDM Documentation',
-   u'Szymon Talaga', 'pybdm', 'One line description of project.',
+  ('index', 'pybdm', 'PyBDM Documentation',
+   'Szymon Talaga', 'pybdm', 'One line description of project.',
    'Miscellaneous'),
 ]
 

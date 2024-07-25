@@ -187,9 +187,48 @@ until its rightmost column or lowest row contain the values on the boundary
 of the original matrix.
 
 The condition can yield different results for small objects, but are consistent
-asymptotically in the limit of large object sizes. Detailed discussion of
-boundary conditions in BDM can be found in :cite:`zenil_decomposition_2018`.
+asymptotically in the limit of large object sizes. 
 
+If the periodic condition was used, the missing columns would be supplied by
+wrapping around the first column up to the required missing columns and this is
+the same for rows, we would get four slices:
+
++--+--+--+
+|1 |2 |3 |
++--+--+--+
+|6 |7 |8 |
++--+--+--+
+|11|12|13|
++--+--+--+
+
++--+--+--+
+|4 |5 |1 |
++--+--+--+
+|9 |10|6 |
++--+--+--+
+|14|15|11|
++--+--+--+
+
++--+--+--+
+|16|17|18|
++--+--+--+
+|21|22|23|
++--+--+--+
+|1 |2 |3 |
++--+--+--+
+
++--+--+--+
+|19|20|16|
++--+--+--+
+|24|25|21|
++--+--+--+
+|4 |5 |1 |
++--+--+--+
+
+This ensures that the matrices have equal sizes when computing the BDM.
+
+Detailed discussion of boundary conditions in BDM can be found
+in :cite:`zenil_decomposition_2018`.
 
 Normalized BDM
 --------------

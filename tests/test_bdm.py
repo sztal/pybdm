@@ -24,7 +24,7 @@ bdm1_test_input = [(array_from_string(s0, (24,)), 26.610413747641715),
 _dirpath = os.path.join(os.path.split(__file__)[0], 'data')
 # Get test input data and expected values
 bdm2_test_input = []
-with open(os.path.join(_dirpath, 'bdm-b2-d4x4-test-input.tsv'), 'r') as stream:
+with open(os.path.join(_dirpath, 'bdm-b2-d4x4-test-input.tsv'), 'r', encoding='utf-8') as stream:
     for line in stream:
         string, bdm = line.strip().split("\t")
         bdm = float(bdm.strip())
@@ -40,7 +40,7 @@ ent1_test_input = [(array_from_string(s0, (24,)), 0.0),
                    (array_from_string(s2, (48,)), 2.0)]
 
 ent2_test_input = []
-with open(os.path.join(_dirpath, 'ent-b2-d4x4-test-input.tsv'), 'r') as stream:
+with open(os.path.join(_dirpath, 'ent-b2-d4x4-test-input.tsv'), 'r', encoding='utf-8') as stream:
     for line in stream:
         string, ent2 = line.strip().split(",")
         ent2 = float(ent2.strip())

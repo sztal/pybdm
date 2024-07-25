@@ -101,19 +101,19 @@ def encode_sequence(seq, base=2):
     Examples
     --------
     >>> encode_sequence(np.array([1, 0, 0]))
-    4
+    np.int64(4)
     """
     if seq.size == 0:
         return 0
     if seq.ndim != 1:
         raise AttributeError("'seq' has to be a 1D array")
-    if seq.dtype != np.int:
+    if seq.dtype != np.int_:
         raise TypeError("'seq' has to be of integer dtype")
     if not (seq >= 0).all():
         raise ValueError("'seq' has to conisist of non-negative integers")
     proper_values = np.arange(base)
     if not np.isin(seq, proper_values).all():
-        raise ValueError("There are symbol codes greater than {}".format(base-1))
+        raise ValueError(f"There are symbol codes greater than {base-1}")
     code = 0
     for i, x in enumerate(reversed(seq)):
         if x > 0:
@@ -196,7 +196,7 @@ def decode_array(code, shape, base=2, **kwds):
     length = prod(shape)
     seq = decode_sequence(code, base=base, min_length=length)
     if seq.size > length:
-        raise ValueError("{} does not encode array of shape {}".format(code, shape))
+        raise ValueError(f"{code} does not encode array of shape {shape}")
     arr = seq.reshape(shape, **kwds)
     return arr
 

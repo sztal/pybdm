@@ -9,7 +9,6 @@ Next major release
 * Perturbation experiment for growing/shrinking systems
 * Implement Bayesian framework for approximating probability of
   a stochastic generating source
-* Add a partition algorithm with the periodic boundary condition
 * Use integer-based conding of dataset blocks
   (to lower memory-footprint). This will be done only if it will be possible
   to use integer coding without significantly negative impact on the performance.

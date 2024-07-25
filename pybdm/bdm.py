@@ -129,21 +129,19 @@ class BDM:
         self.ndim = ndim
         try:
             self.ctmname = ctmname if ctmname else self._ndim_to_ctm[(ndim, nsymbols)]
-        except KeyError:
-            msg = "no CTM dataset for 'ndim={}' and 'nsymbols={}'".format(
-                ndim, nsymbols
-            )
-            raise CTMDatasetNotFoundError(msg)
+        except KeyError as ke:
+            msg = f"no CTM dataset for 'ndim={ndim}' and 'nsymbols={nsymbols}'"
+            raise CTMDatasetNotFoundError(msg) from ke
         try:
             nsymbols, _shape = self.ctmname.split('-')[-2:]
-        except ValueError:
+        except ValueError as ve:
             msg = "incorrect 'ctmname'; it should be in format " + \
                 "'name-b<nsymbols>-d<shape>'"
-            raise BDMConfigurationError(msg)
+            raise BDMConfigurationError(msg) from ve
         self.nsymbols = int(nsymbols[1:])
         if shape is None:
             shape = tuple(int(x) for x in _shape[1:].split('x'))
-        if any([ x != shape[0] for x in shape ]):
+        if any( x != shape[0] for x in shape ):
             raise BDMConfigurationError("'shape' has to be equal in each dimension")
         ctm, ctm_missing = get_ctm_dataset(self.ctmname)
         self._ctm = ctm
@@ -155,9 +153,7 @@ class BDM:
     def __repr__(self):
         partition = str(self.partition)[1:-1]
         cn = self.__class__.__name__
-        return "<{}(ndim={}, nsymbols={}) with {}>".format(
-            cn, self.ndim, self.nsymbols, partition
-        )
+        return f"<{cn}(ndim={self.ndim}, nsymbols={self.nsymbols}) with {partition}>"
 
     def decompose(self, X):
         """Decompose a dataset into blocks.
@@ -240,9 +236,7 @@ class BDM:
             except KeyError:
                 cmx = self._ctm_missing[sh]
                 if self.warn_if_missing_ctm and options.get('warn_if_missing_ctm'):
-                    msg = "CTM dataset does not contain object '{}' of shape {}".format(
-                        key, sh
-                    )
+                    msg = f"CTM dataset does not contain object '{key}' of shape {sh}"
                     warnings.warn(msg, BDMRuntimeWarning, stacklevel=2)
             yield key, cmx
 
@@ -385,9 +379,8 @@ class BDM:
             self._check_data(X)
         if normalized and isinstance(self.partition, PartitionCorrelated):
             raise NotImplementedError(
-                "normalized BDM not implemented for '{}' partition".format(
-                    PartitionCorrelated.name
-                ))
+                f"normalized BDM not implemented for '{PartitionCorrelated.name}' partition"
+            )
         counter = self.decompose_and_count(X)
         cmx = self.compute_bdm(counter)
         if self.raise_if_zero and options.get('raise_if_zero') and cmx == 0:
@@ -429,7 +422,7 @@ class BDM:
         >>> c1 = Counter([('111111111111', 1.95207842085224e-08)])
         >>> c2 = Counter([('000000000000', 1.95207842085224e-08)])
         >>> bdm.compute_ent(c1, c2) # doctest: +FLOAT_CMP
-        1.0
+        np.float64(1.0)
         """
         counter = reduce(lambda x, y: x+y, counters)
         ncounts = sum(counter.values())
@@ -474,15 +467,14 @@ class BDM:
         >>> import numpy as np
         >>> bdm = BDM(ndim=2)
         >>> bdm.ent(np.ones((12, 12), dtype=int)) # doctest: +FLOAT_CMP
-        0.0
+        np.float64(0.0)
         """
         if check_data:
             self._check_data(X)
         if normalized and isinstance(self.partition, PartitionCorrelated):
             raise NotImplementedError(
-                "normalized entropy not implemented for '{}' partition".format(
-                    PartitionCorrelated.name
-                ))
+                f"normalized entropy not implemented for '{PartitionCorrelated.name}' partition"
+            )
         counter = self.decompose_and_count(X, lookup_ctm=False)
         ent = self.compute_ent(counter)
         if normalized:
@@ -511,16 +503,14 @@ class BDM:
             raise TypeError("'X' has to be an integer array")
         symbols = np.unique(X)
         if symbols.size > self.nsymbols:
-            raise ValueError("'X' has more than {} unique symbols".format(
-                self.nsymbols
-            ))
-        valid_symbols = np.array([ _ for _ in range(self.nsymbols) ])
+            raise ValueError(f"'X' has more than {self.nsymbols} unique symbols")
+        valid_symbols = np.array(list(range(self.nsymbols)))
         bad_symbols = symbols[~np.isin(symbols, valid_symbols)]
         if bad_symbols.size > 0:
-            raise ValueError("'X' contains symbols outside of [0, {}]: {}".format(
-                str(self.nsymbols-1),
-                ", ".join(str(s) for s in bad_symbols)
-            ))
+            bad_symbols_str = ", ".join(str(s) for s in bad_symbols)
+            raise ValueError(
+                f"'X' contains symbols outside of [0, {str(self.nsymbols-1)}]: {bad_symbols_str}"
+            )
 
     def _cycle_parts(self, shape):
         """Cycle over all possible dataset parts sorted by complexity."""
