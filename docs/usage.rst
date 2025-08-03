@@ -38,7 +38,7 @@ which are always bounded in the [0, 1] interval.
 .. code-block:: python
 
     import numpy as np
-    for pybdm import BDM
+    from pybdm import BDM
 
     # Minimally complex data
     X = np.ones((100,), dtype=int)
